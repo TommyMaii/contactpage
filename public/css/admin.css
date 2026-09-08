@@ -223,6 +223,39 @@
   background: rgba(255, 107, 107, 0.05);
 }
 
+/* --------------------------------------------------------------- QR sign */
+
+.qr-preview {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 22px;
+}
+
+.qr-preview__code {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.qr-preview__code svg { width: 100%; height: auto; display: block; }
+
+@media (max-width: 600px) {
+  .qr-preview { grid-template-columns: 1fr; }
+}
+
+.sign {
+  text-align: center;
+  padding: 20mm 10mm;
+}
+
+.sign__store { font-size: 22pt; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.sign__title { font-size: 34pt; font-weight: 800; margin: 8mm 0 4mm; }
+.sign__sub { font-size: 14pt; color: #444; margin-bottom: 10mm; }
+.sign svg { width: 110mm; height: auto; margin: 0 auto; display: block; }
+.sign__url { font-family: ui-monospace, Menlo, monospace; font-size: 11pt; color: #555; margin-top: 8mm; }
+
 /* ---------------------------------------------------------- print sheet */
 
 .sheet { display: none; }
@@ -248,6 +281,7 @@
     gap: 8px;
     padding: 10mm;
   }
+  .sheet.sheet--sign { display: block !important; padding: 0; }
   .slip { border-color: #bbb; }
 }
 

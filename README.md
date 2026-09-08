@@ -1,9 +1,9 @@
 # Hatamon Case
 
 A QR-code prize reveal for Hatamon card events. A customer buys something,
-gets a slip with a QR code, scans it, and opens an animated case that lands on
-one of the prizes you configured. Staff see a hidden panel where they upload
-prize pictures, set the odds, print ticket slips, and mark prizes as collected.
+scans the QR sign on the table, and opens an animated case that lands on one
+of the prizes you configured. Staff see a hidden panel where they upload
+prize pictures, set the odds, print the sign, and mark prizes as collected.
 
 Everything runs on **Cloudflare Pages** (static pages + Functions) with one
 **KV namespace** for storage. No build step, no framework, no database server.
@@ -19,21 +19,23 @@ functions/_lib/    auth, storage, roll logic
 ## How an event works
 
 1. **Before the event** — sign in at `/admin.html`, add prizes with pictures,
-   set weights (odds) and stock, then generate tickets and hit **Print QR
-   slips**.
-2. **At the table** — flip the **Live** switch on. Hand a slip to each
-   customer who buys something.
-3. **Customer scans** the slip. Their phone opens `/?c=XXXX-XXXX`, the case
-   unlocks, they tap it, the reel spins and stops on their prize. They get a
+   set weights (odds) and stock, then open the **QR sign** tab and hit
+   **Print sign**.
+2. **At the table** — put the sign out and flip the **Live** switch on.
+3. **Customer buys something and scans the sign.** Their phone opens the
+   case, they tap it, the reel spins and stops on their prize. They get a
    six-character **claim code**.
 4. **They show you the screen**, you type the claim code into the **Pulls**
    tab (or tap *Collected* next to it) and hand over the prize.
-5. **After** — export the CSV if you want a record, then *Delete all tickets /
-   pulls* in Settings to reset for next time.
+5. **After** — export the CSV if you want a record, then *Delete all pulls*
+   in Settings to reset for next time. Flip **Live** off whenever you leave
+   the table so the sign stops working.
 
-Each ticket opens exactly once. The roll happens on the server, so the odds
-cannot be changed from the phone, and the reel the customer sees is generated
-from the same prize pool with the winner placed at a fixed position.
+Each phone gets **one open per hour** by default (a cookie identifies the
+phone; change the number in Settings if people buy more than once). The roll
+happens on the server, so the odds cannot be changed from the phone, and the
+reel the customer sees is generated from the same prize pool with the winner
+placed at a fixed position. A claim code can only be marked collected once.
 
 ### Odds
 
@@ -45,11 +47,13 @@ pool automatically and the others' odds rescale.
 Toggle **Show odds to customers** in Settings if you want the percentages
 visible on the customer screen.
 
-### Without tickets
+### Ticket mode (optional)
 
-Turn off **Require a ticket code** in Settings and anyone with the link can
-open the case, limited to *N* opens per phone per hour. Handy for a giveaway
-sign, but tickets are the honest way to tie one open to one purchase.
+If you want a stricter one-open-per-purchase guarantee, turn on **Require a
+ticket code** in Settings. Then generate tickets in the **Tickets** tab, print
+the sheet of QR slips, and hand one slip to each customer with their purchase.
+Each slip's QR opens `/?c=XXXX-XXXX` and works exactly once; someone who
+clears their cookies or uses a private tab cannot re-roll.
 
 ## Deploy to Cloudflare Pages
 
@@ -128,6 +132,9 @@ session cookie set by `POST /api/admin/login`.
   this is a non-issue, but keep a spare.
 - **Images** are downscaled in the browser to 900 px before upload and stored
   in KV, capped at 3 MB each.
+- **Per-phone limit is a cookie**, so a determined person can re-roll in a
+  private tab. Stock caps how much that can cost you; ticket mode closes the
+  gap entirely.
 - **Single password** for staff. Rotate it in the dashboard to revoke access.
 - Ticket codes use an alphabet without `0/O/1/I/L/U`, so they are safe to read
   out loud if a QR scan fails.

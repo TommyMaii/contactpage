@@ -11,7 +11,7 @@ export const KEYS = {
   win: (createdAt, id) => `win:${String(createdAt).padStart(14, '0')}:${id}`,
   claim: (claimCode) => `claim:${claimCode}`,
   winRef: (id) => `winref:${id}`,
-  rate: (ip, bucket) => `rate:${ip}:${bucket}`,
+  rate: (subject, bucket) => `rate:${subject}:${bucket}`,
 };
 
 export const RARITIES = [
@@ -29,9 +29,9 @@ export const DEFAULT_SETTINGS = {
   caseName: 'Event Case',
   tagline: 'Thanks for your purchase! Open your case and see what you pulled.',
   claimNote: 'Show this screen to a Hatamon staff member to collect your prize.',
-  requireTicket: true,
+  requireTicket: false,
   showOdds: false,
-  maxOpensPerHour: 3,
+  maxOpensPerHour: 1,
   live: true,
   closedMessage: 'The case is closed right now. Come find us at the table!',
 };
@@ -234,9 +234,10 @@ export async function listAll(env, prefix, limit = 1000) {
 
 /* --------------------------------------------------------------- rate limit */
 
-export async function checkRateLimit(env, ip, maxPerHour) {
+/** Count opens for `subject` (a device id or an IP) within the current hour. */
+export async function checkRateLimit(env, subject, maxPerHour) {
   const bucket = Math.floor(Date.now() / 3_600_000);
-  const key = KEYS.rate(ip, bucket);
+  const key = KEYS.rate(subject, bucket);
   const used = Number((await db(env).get(key)) || 0);
   if (used >= maxPerHour) return false;
   await db(env).put(key, String(used + 1), { expirationTtl: 3600 });

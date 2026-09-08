@@ -41,6 +41,7 @@
       <button class="tab is-active" data-tab="prizes" type="button">Prizes</button>
       <button class="tab" data-tab="tickets" type="button">Tickets <span class="tab__count" id="count-tickets">0</span></button>
       <button class="tab" data-tab="pulls" type="button">Pulls <span class="tab__count" id="count-pulls">0</span></button>
+      <button class="tab" data-tab="qr" type="button">QR sign</button>
       <button class="tab" data-tab="settings" type="button">Settings</button>
     </nav>
 
@@ -134,6 +135,30 @@
       </div>
     </section>
 
+    <!-- ---------------------------------------------------------- QR sign -->
+    <section class="view" data-view="qr">
+      <div class="section-head">
+        <div>
+          <h2>QR sign</h2>
+          <p>Put this on the table. Customers scan it after buying and the case opens on their phone.</p>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn--primary" id="print-sign" type="button">Print sign</button>
+      </div>
+
+      <div class="qr-preview panel">
+        <div class="qr-preview__code" id="sign-qr"></div>
+        <div>
+          <p class="field__label">Link in the QR</p>
+          <p class="code" id="sign-url" style="word-break: break-all; margin-bottom: 14px"></p>
+          <p class="muted" style="font-size: 13px">
+            Each phone gets one open per hour by default (Settings → “Opens per phone per hour”).
+            Turn the <strong>Live</strong> switch off when you step away from the table and the sign stops working.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- ---------------------------------------------------------- settings -->
     <section class="view" data-view="settings">
       <div class="section-head">
@@ -168,11 +193,12 @@
           <div class="field">
             <span class="field__label">Access</span>
             <label class="switch" style="margin: 6px 0"><input type="checkbox" name="requireTicket" /> Require a ticket code to open</label>
-            <span class="field__hint">Off = anyone with the link can open, limited per phone per hour.</span>
+            <span class="field__hint">Off (default): customers scan the QR sign and open straight away. On: each open needs a printed ticket slip.</span>
           </div>
           <label class="field">
-            <span class="field__label">Opens per hour without a ticket</span>
+            <span class="field__label">Opens per phone per hour</span>
             <input class="input" name="maxOpensPerHour" type="number" min="1" max="100" />
+            <span class="field__hint">Only used without tickets. 1 = one open per visit; raise it if people buy several times.</span>
           </label>
 
           <div class="field field--wide">

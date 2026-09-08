@@ -11,6 +11,7 @@ import {
   sessionCookie,
 } from '../_lib/auth.js';
 import { newId, newTicketCode, normalizeCode } from '../_lib/ids.js';
+import { readCookie } from '../_lib/auth.js';
 import {
   DEFAULT_SETTINGS,
   KEYS,
@@ -37,6 +38,11 @@ import {
 } from '../_lib/store.js';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+
+// Ticketless mode identifies a phone by a long-lived cookie. Event venues share
+// one IP across every phone on the WiFi, so IP alone is only a loose backstop.
+const DEVICE_COOKIE = 'hatamon_device';
+const IP_BACKSTOP_PER_HOUR = 60;
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -161,10 +167,22 @@ async function handleOpen(env, request) {
     // Burn the ticket before rolling so a double-tap cannot open twice.
     ticket.usedAt = Date.now();
     await putTicket(env, ticket);
-  } else {
-    const allowed = await checkRateLimit(env, clientIp(request), settings.maxOpensPerHour);
-    if (!allowed) {
-      throw new HttpError(429, 'You have opened your cases for now. Come see us at the table!', {
+  }
+
+  let deviceId = null;
+  let setCookie = null;
+  if (!ticket) {
+    deviceId = readCookie(request, DEVICE_COOKIE);
+    if (!deviceId || !/^[a-z0-9]{16}$/.test(deviceId)) {
+      deviceId = newId(16);
+      setCookie = `${DEVICE_COOKIE}=${deviceId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`;
+    }
+    const [deviceOk, ipOk] = await Promise.all([
+      checkRateLimit(env, `dev:${deviceId}`, settings.maxOpensPerHour),
+      checkRateLimit(env, `ip:${clientIp(request)}`, IP_BACKSTOP_PER_HOUR),
+    ]);
+    if (!deviceOk || !ipOk) {
+      throw new HttpError(429, 'This phone has already opened its case. Come see us at the table!', {
         code: 'rate_limited',
       });
     }
@@ -186,7 +204,10 @@ async function handleOpen(env, request) {
   await consumeStock(env, winner.id);
 
   const { reel, winnerIndex } = buildReel(prizes, winner);
-  return json({ ok: true, reel, winnerIndex, win: winView(win) });
+  return json(
+    { ok: true, reel, winnerIndex, win: winView(win) },
+    setCookie ? { headers: { 'set-cookie': setCookie } } : {},
+  );
 }
 
 async function handleImage(env, id) {

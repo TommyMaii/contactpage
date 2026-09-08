@@ -109,6 +109,7 @@ el('tabs').addEventListener('click', (event) => {
   }
   if (tab.dataset.tab === 'tickets') loadTickets();
   if (tab.dataset.tab === 'pulls') loadWins();
+  if (tab.dataset.tab === 'qr') renderSign();
 });
 
 /* ---------------------------------------------------------------- prizes */
@@ -498,6 +499,7 @@ el('print-tickets').addEventListener('click', () => {
     return;
   }
   const sheet = el('sheet');
+  sheet.classList.remove('sheet--sign');
   sheet.replaceChildren(
     ...rows.map((t) => {
       const qr = qrcode(0, 'M');
@@ -512,6 +514,44 @@ el('print-tickets').addEventListener('click', () => {
       return slip;
     }),
   );
+  window.print();
+});
+
+/* ---------------------------------------------------------------- QR sign */
+
+function caseUrl() {
+  return `${location.origin}/`;
+}
+
+function qrSvg(text, cellSize = 4) {
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag({ cellSize, margin: 2, scalable: true });
+}
+
+function renderSign() {
+  if (typeof qrcode !== 'function') return;
+  el('sign-url').textContent = caseUrl();
+  el('sign-qr').innerHTML = qrSvg(caseUrl());
+}
+
+el('print-sign').addEventListener('click', () => {
+  if (typeof qrcode !== 'function') {
+    toast('QR library did not load.', true);
+    return;
+  }
+  const sheet = el('sheet');
+  sheet.classList.add('sheet--sign');
+  const sign = h('div', { class: 'sign' });
+  sign.append(
+    h('div', { class: 'sign__store' }, state.settings.storeName),
+    h('div', { class: 'sign__title' }, 'Scan to open your case'),
+    h('div', { class: 'sign__sub' }, 'One free pull with every purchase — show staff your claim code'),
+  );
+  sign.insertAdjacentHTML('beforeend', qrSvg(caseUrl(), 6));
+  sign.append(h('div', { class: 'sign__url' }, caseUrl()));
+  sheet.replaceChildren(sign);
   window.print();
 });
 
