@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#090c13" />
+  <title>Hatamon — Case Control</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+  <!-- ================================================================ login -->
+  <section class="login" id="login">
+    <form class="panel login__box" id="login-form">
+      <span class="brand" style="margin-bottom: 22px"><span class="brand__mark"></span>Hatamon</span>
+      <h1 style="font-size: 22px; margin-bottom: 6px">Case control</h1>
+      <p class="muted" style="font-size: 14px; margin-bottom: 20px">Staff only.</p>
+      <label class="field">
+        <span class="field__label">Password</span>
+        <input class="input" id="login-password" type="password" autocomplete="current-password" required />
+      </label>
+      <button class="btn btn--primary btn--block" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <!-- ================================================================ admin -->
+  <div class="admin" id="admin">
+    <header class="admin__bar">
+      <span class="brand"><span class="brand__mark"></span>Case control</span>
+      <label class="switch" title="Customers can open the case only while this is on">
+        <input type="checkbox" id="live-toggle" />
+        <span id="live-label">Live</span>
+      </label>
+      <a class="btn btn--sm btn--ghost" href="/" target="_blank" rel="noopener">View case ↗</a>
+      <button class="btn btn--sm btn--ghost" id="logout" type="button">Sign out</button>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab is-active" data-tab="prizes" type="button">Prizes</button>
+      <button class="tab" data-tab="tickets" type="button">Tickets <span class="tab__count" id="count-tickets">0</span></button>
+      <button class="tab" data-tab="pulls" type="button">Pulls <span class="tab__count" id="count-pulls">0</span></button>
+      <button class="tab" data-tab="settings" type="button">Settings</button>
+    </nav>
+
+    <!-- ------------------------------------------------------------ prizes -->
+    <section class="view is-active" data-view="prizes">
+      <div class="section-head">
+        <div>
+          <h2>What's in the case</h2>
+          <p>Weight sets the odds. Stock counts down as items are won; leave it unlimited for freebies.</p>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" id="add-prize" type="button">+ Add prize</button>
+      </div>
+
+      <div class="prize-list" id="prize-list"></div>
+      <div class="empty hidden" id="prize-empty">No prizes yet. Add one to get started.</div>
+
+      <div class="savebar" id="savebar">
+        <span class="muted" id="save-status">All changes saved</span>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" id="discard-prizes" type="button">Discard</button>
+        <button class="btn btn--primary" id="save-prizes" type="button">Save prizes</button>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------- tickets -->
+    <section class="view" data-view="tickets">
+      <div class="section-head">
+        <div>
+          <h2>Tickets</h2>
+          <p>One ticket = one open. Print a sheet of QR slips and hand one out with every purchase.</p>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="stat__value" id="t-unused">0</div><div class="stat__label">Unused</div></div>
+        <div class="stat"><div class="stat__value" id="t-used">0</div><div class="stat__label">Opened</div></div>
+        <div class="stat"><div class="stat__value" id="t-total">0</div><div class="stat__label">Total</div></div>
+      </div>
+
+      <form class="toolbar" id="ticket-form">
+        <input class="input" id="ticket-count" type="number" min="1" max="200" value="40" style="width: 90px" />
+        <input class="input" id="ticket-batch" placeholder="Batch label (e.g. Saturday)" maxlength="40" />
+        <button class="btn btn--primary" type="submit">Generate tickets</button>
+        <span class="spacer"></span>
+        <select class="select" id="ticket-filter">
+          <option value="unused">Show unused</option>
+          <option value="all">Show all</option>
+          <option value="used">Show opened</option>
+        </select>
+        <button class="btn" id="print-tickets" type="button">Print QR slips</button>
+      </form>
+
+      <div class="panel" style="overflow-x: auto; padding: 14px 4px 4px">
+        <table class="table">
+          <thead>
+            <tr><th>Code</th><th>Batch</th><th>Status</th><th>Created</th><th></th></tr>
+          </thead>
+          <tbody id="ticket-rows"></tbody>
+        </table>
+        <div class="empty hidden" id="ticket-empty" style="border: 0">No tickets match.</div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- pulls -->
+    <section class="view" data-view="pulls">
+      <div class="section-head">
+        <div>
+          <h2>Pulls</h2>
+          <p>Every case that was opened. Type a claim code to find the pull and mark it collected.</p>
+        </div>
+      </div>
+
+      <form class="toolbar" id="redeem-form">
+        <input class="input code" id="redeem-code" placeholder="Claim code" maxlength="8" autocomplete="off" autocapitalize="characters" />
+        <button class="btn btn--primary" type="submit">Mark collected</button>
+        <span class="spacer"></span>
+        <label class="switch"><input type="checkbox" id="pending-only" checked /> Pending only</label>
+        <button class="btn" id="refresh-pulls" type="button">Refresh</button>
+        <a class="btn" href="/api/admin/wins.csv" download>Export CSV</a>
+      </form>
+
+      <div class="panel" style="overflow-x: auto; padding: 14px 4px 4px">
+        <table class="table">
+          <thead>
+            <tr><th>When</th><th>Prize</th><th>Claim code</th><th>Ticket</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="pull-rows"></tbody>
+        </table>
+        <div class="empty hidden" id="pull-empty" style="border: 0">Nothing here yet.</div>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------- settings -->
+    <section class="view" data-view="settings">
+      <div class="section-head">
+        <div><h2>Settings</h2><p>Branding and how the case behaves at the event.</p></div>
+      </div>
+
+      <form class="panel" id="settings-form" style="padding: 22px">
+        <div class="form-grid">
+          <label class="field">
+            <span class="field__label">Store name</span>
+            <input class="input" name="storeName" maxlength="40" />
+          </label>
+          <label class="field">
+            <span class="field__label">Case name</span>
+            <input class="input" name="caseName" maxlength="40" />
+            <span class="field__hint">Shows top-right on the customer screen.</span>
+          </label>
+          <label class="field field--wide">
+            <span class="field__label">Tagline</span>
+            <input class="input" name="tagline" maxlength="200" />
+          </label>
+          <label class="field field--wide">
+            <span class="field__label">Claim instructions</span>
+            <input class="input" name="claimNote" maxlength="200" />
+            <span class="field__hint">Shown under the claim code after a win.</span>
+          </label>
+          <label class="field field--wide">
+            <span class="field__label">Closed message</span>
+            <input class="input" name="closedMessage" maxlength="200" />
+          </label>
+
+          <div class="field">
+            <span class="field__label">Access</span>
+            <label class="switch" style="margin: 6px 0"><input type="checkbox" name="requireTicket" /> Require a ticket code to open</label>
+            <span class="field__hint">Off = anyone with the link can open, limited per phone per hour.</span>
+          </div>
+          <label class="field">
+            <span class="field__label">Opens per hour without a ticket</span>
+            <input class="input" name="maxOpensPerHour" type="number" min="1" max="100" />
+          </label>
+
+          <div class="field field--wide">
+            <span class="field__label">Display</span>
+            <label class="switch" style="margin: 6px 0"><input type="checkbox" name="showOdds" /> Show odds to customers</label>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px">
+          <button class="btn btn--primary" type="submit">Save settings</button>
+        </div>
+      </form>
+
+      <div class="danger-zone">
+        <h3 style="font-size: 15px; margin-bottom: 6px">Reset between events</h3>
+        <p class="muted" style="font-size: 13px; margin-bottom: 12px">
+          Deletes records permanently. Export the CSV first if you want to keep a log.
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button class="btn btn--danger btn--sm" data-purge="tickets" type="button">Delete all tickets</button>
+          <button class="btn btn--danger btn--sm" data-purge="wins" type="button">Delete all pulls</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- printable QR slips; only visible in print -->
+  <div class="sheet" id="sheet"></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/js/vendor/qrcode.js"></script>
+  <script src="/js/admin.js" type="module"></script>
+</body>
+</html>

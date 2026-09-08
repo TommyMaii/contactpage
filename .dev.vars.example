@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+ADMIN_PASSWORD=change-me
+# Optional. If unset, sessions are signed with a key derived from ADMIN_PASSWORD.
+SESSION_SECRET=

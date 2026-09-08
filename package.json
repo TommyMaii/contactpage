@@ -1,0 +1,14 @@
+{
+  "name": "hatamon-case",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hatamon event case opening — QR gift reveal with a hidden staff panel, hosted on Cloudflare Pages.",
+  "scripts": {
+    "dev": "wrangler pages dev public --kv HATAMON --compatibility-date=2025-01-01",
+    "deploy": "wrangler pages deploy public",
+    "kv:create": "wrangler kv namespace create HATAMON"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

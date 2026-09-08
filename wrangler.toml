@@ -1,0 +1,13 @@
+# Cloudflare Pages project config. `npx wrangler pages dev` reads this locally;
+# in the dashboard the KV binding below must be added under
+# Settings → Functions → KV namespace bindings (binding name: HATAMON).
+
+name = "hatamon-case"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "public"
+
+# Replace the id with the namespace you create via
+#   npx wrangler kv namespace create HATAMON
+[[kv_namespaces]]
+binding = "HATAMON"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
