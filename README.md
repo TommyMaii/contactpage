@@ -57,41 +57,35 @@ clears their cookies or uses a private tab cannot re-roll.
 
 ## Deploy to Cloudflare Pages
 
-You need a Cloudflare account and `npm` (Node 18+).
+The easy way is to connect the GitHub repo in the Cloudflare dashboard, so
+every push redeploys.
+
+1. **Workers & Pages → Create → Pages → Connect to Git**, pick this repo.
+   - Build command: *(leave empty)*
+   - Build output directory: `public`
+2. Once it has deployed, open the project → **Settings** and add:
+   - **Bindings → Add → KV namespace**: variable name `HATAMON`. Create a
+     namespace (any name) if you have none yet.
+   - **Variables and secrets → Add**: type *Secret*, name `ADMIN_PASSWORD`,
+     value = the staff password. Make sure it is on **Production**.
+   - Optionally `SESSION_SECRET` (any long random string). Without it,
+     sessions are signed with a key derived from the password, so changing
+     the password simply signs everyone out.
+3. **Bindings and secrets only apply to deployments made after you add
+   them.** Trigger one by pushing any commit. Then visit
+   `https://<project>.pages.dev/admin.html`.
+
+### Deploying from your terminal instead
 
 ```bash
 npm install
 npx wrangler login
-
-# 1. create the KV namespace and paste the id it prints into wrangler.toml
-npm run kv:create
-
-# 2. first deploy — creates the Pages project
-npm run deploy
+npm run kv:create        # paste the printed id into wrangler.toml and uncomment the block
+npm run deploy           # creates the Pages project on first run
 ```
 
-Then in the Cloudflare dashboard, open the Pages project → **Settings**:
-
-- **Functions → KV namespace bindings**: variable name `HATAMON`, pick the
-  namespace you created. (Wrangler picks this up from `wrangler.toml` on
-  deploy, but confirm it is there.)
-- **Environment variables → Production**: add `ADMIN_PASSWORD` as a
-  **secret**. Optionally add `SESSION_SECRET` (any long random string) — if
-  omitted, sessions are signed with a key derived from the password, so
-  changing the password logs everyone out, which is fine.
-
-Redeploy (`npm run deploy`) after adding bindings, then visit
-`https://<project>.pages.dev/admin.html`.
-
-### Git-connected deploys (alternative)
-
-Connect this repo to Pages in the dashboard with:
-
-- Build command: *(leave empty)*
-- Build output directory: `public`
-
-and configure the same KV binding and secret. Every push to your production
-branch redeploys.
+Then add the `ADMIN_PASSWORD` secret in the dashboard as above and run
+`npm run deploy` once more.
 
 ## Local development
 
