@@ -68,11 +68,14 @@ function renderIdle() {
 }
 
 async function refreshConfig() {
+  // Throws on the first load (the gate shows the error); later refreshes only
+  // log, so a blip never blanks a running display.
   try {
     state.config = await api('/api/case');
     state.rarity = makeRarityLookup(state.config.rarities);
     renderIdle();
   } catch (error) {
+    if (!state.config) throw error;
     console.warn('config refresh failed', error);
   }
 }
@@ -202,8 +205,19 @@ function toggleFullscreen() {
 
 el('gate-start').addEventListener('click', async () => {
   unlockAudio();
+  const button = el('gate-start');
+  const errorBox = el('gate-error');
+  button.disabled = true;
+  errorBox.classList.add('hidden');
+  try {
+    await refreshConfig();
+  } catch (error) {
+    errorBox.textContent = `Can't load the case: ${error.message}`;
+    errorBox.classList.remove('hidden');
+    button.disabled = false;
+    return;
+  }
   el('gate').remove();
-  await refreshConfig();
   // Anything already queued before the display was opened is history, not a
   // show to replay: mark it seen so only new scans play.
   try {

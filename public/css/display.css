@@ -13,6 +13,17 @@ body.display { overflow: hidden; height: 100vh; }
 }
 
 .gate__card { max-width: 520px; padding: 36px; text-align: center; }
+.gate__error {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 0.08);
+  color: #ffd9d9;
+  font-size: 14px;
+  text-align: left;
+}
+
 .gate kbd {
   font: inherit;
   font-size: 12px;
