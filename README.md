@@ -98,12 +98,11 @@ overwrites whatever you configured in the dashboard on every deploy.
 ```bash
 npm install
 npx wrangler login
-npm run kv:create        # creates a KV namespace called HATAMON (once)
 npm run deploy           # deploys ./public to the "hatamon-case" project
 ```
 
-Then add the `ADMIN_PASSWORD` secret in the dashboard as above and run
-`npm run deploy` once more.
+A CLI deploy uses the KV binding and `ADMIN_PASSWORD` secret configured in
+the dashboard, exactly like a Git deploy, so set those up once as above.
 
 ## Local development
 
