@@ -85,16 +85,21 @@ every push redeploys.
      sessions are signed with a key derived from the password, so changing
      the password simply signs everyone out.
 3. **Bindings and secrets only apply to deployments made after you add
-   them.** Trigger one by pushing any commit. Then visit
+   them.** Trigger one with **Create deployment** (top right of the
+   Deployments tab, pick your branch) or by pushing any commit. Then visit
    `https://<project>.pages.dev/admin.html`.
+
+There is deliberately **no `wrangler.toml`** in this repo. If one exists,
+Cloudflare treats it as the source of truth for bindings and silently
+overwrites whatever you configured in the dashboard on every deploy.
 
 ### Deploying from your terminal instead
 
 ```bash
 npm install
 npx wrangler login
-npm run kv:create        # paste the printed id into wrangler.toml and uncomment the block
-npm run deploy           # creates the Pages project on first run
+npm run kv:create        # creates a KV namespace called HATAMON (once)
+npm run deploy           # deploys ./public to the "hatamon-case" project
 ```
 
 Then add the `ADMIN_PASSWORD` secret in the dashboard as above and run
