@@ -1,0 +1,12 @@
+# Cloudflare Pages config. Bindings live HERE — with this file present,
+# Cloudflare ignores bindings set in the dashboard, so keep it in git.
+
+name = "hatamon-case"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "public"
+
+# Your KV namespace. Find the id with:  npx wrangler kv namespace list
+# (or Workers & Pages → KV in the dashboard).
+[[kv_namespaces]]
+binding = "HATAMON"
+id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"

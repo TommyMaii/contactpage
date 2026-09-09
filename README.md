@@ -70,39 +70,34 @@ clears their cookies or uses a private tab cannot re-roll.
 
 ## Deploy to Cloudflare Pages
 
-The easy way is to connect the GitHub repo in the Cloudflare dashboard, so
-every push redeploys.
-
-1. **Workers & Pages → Create → Pages → Connect to Git**, pick this repo.
-   - Build command: *(leave empty)*
-   - Build output directory: `public`
-2. Once it has deployed, open the project → **Settings** and add:
-   - **Bindings → Add → KV namespace**: variable name `HATAMON`. Create a
-     namespace (any name) if you have none yet.
-   - **Variables and secrets → Add**: type *Secret*, name `ADMIN_PASSWORD`,
-     value = the staff password. Make sure it is on **Production**.
-   - Optionally `SESSION_SECRET` (any long random string). Without it,
-     sessions are signed with a key derived from the password, so changing
-     the password simply signs everyone out.
-3. **Bindings and secrets only apply to deployments made after you add
-   them.** Trigger one with **Create deployment** (top right of the
-   Deployments tab, pick your branch) or by pushing any commit. Then visit
-   `https://<project>.pages.dev/admin.html`.
-
-There is deliberately **no `wrangler.toml`** in this repo. If one exists,
-Cloudflare treats it as the source of truth for bindings and silently
-overwrites whatever you configured in the dashboard on every deploy.
-
-### Deploying from your terminal instead
+Bindings are declared in `wrangler.toml`, which is committed. With that file
+present Cloudflare ignores any bindings set in the dashboard, so do not mix
+the two: the file wins on every deploy.
 
 ```bash
 npm install
 npx wrangler login
-npm run deploy           # deploys ./public to the "hatamon-case" project
+npx wrangler kv namespace create HATAMON   # once; prints an id
 ```
 
-A CLI deploy uses the KV binding and `ADMIN_PASSWORD` secret configured in
-the dashboard, exactly like a Git deploy, so set those up once as above.
+Paste the printed id into `wrangler.toml` (`id = "..."`), commit it, then:
+
+```bash
+npm run deploy
+```
+
+Then in the Cloudflare dashboard, open the project → **Settings →
+Variables and secrets** and add `ADMIN_PASSWORD` as a **Secret** on
+**Production**. Optionally `SESSION_SECRET` (any long random string);
+without it sessions are signed with a key derived from the password, so
+changing the password simply signs everyone out. Secrets only apply to
+deployments made after you add them, so run `npm run deploy` once more.
+
+Visit `https://<project>.pages.dev/admin.html`.
+
+If you connect the repo to Pages in the dashboard instead (build command
+empty, output directory `public`), every push deploys and the same
+`wrangler.toml` supplies the KV binding.
 
 ## Local development
 
