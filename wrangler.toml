@@ -9,4 +9,4 @@ pages_build_output_dir = "public"
 # (or Workers & Pages → KV in the dashboard).
 [[kv_namespaces]]
 binding = "HATAMON"
-id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
+id = "8c7ef436ca6d43ed80b2831ecae744ba"
