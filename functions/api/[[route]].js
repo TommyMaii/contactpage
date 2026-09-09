@@ -123,6 +123,7 @@ async function handleCase(env) {
       tagline: settings.tagline,
       claimNote: settings.claimNote,
       caseMode: settings.caseMode,
+      autoCollect: settings.autoCollect,
       requireTicket: settings.requireTicket,
       showOdds: settings.showOdds,
       live: settings.live,
@@ -198,11 +199,13 @@ async function handleOpen(env, request) {
     }
   }
 
+  const onScreen = settings.caseMode === 'screen';
   const winner = rollPrize(prizes);
   const win = await recordWin(env, {
     prize: winner,
     ticketCode: ticket ? ticket.code : null,
     source: ticket ? 'ticket' : 'open',
+    collected: onScreen && settings.autoCollect,
   });
 
   if (ticket) {
@@ -213,7 +216,6 @@ async function handleOpen(env, request) {
 
   await consumeStock(env, winner.id);
 
-  const onScreen = settings.caseMode === 'screen';
   if (onScreen) {
     await pushToScreen(env, screenName(body.screen), { win: winView(win) });
   }

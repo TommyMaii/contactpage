@@ -4,7 +4,8 @@
 import { buildReel, confettiBurst, itemNode, makeRarityLookup, spinReel, tick, unlockAudio } from './reel.js';
 
 const POLL_MS = 2000;
-const RESULT_MS = 12000;
+const RESULT_MS = 8000;
+const RESULT_QUEUED_MS = 4000;
 const REMEMBER = 60; // recent win ids we have already played
 
 const el = (id) => document.getElementById(id);
@@ -18,6 +19,7 @@ const state = {
   playing: false,
   muted: false,
   pollTimer: null,
+  skip: null, // resolver that cuts the result hold short
 };
 
 const views = {
@@ -29,6 +31,8 @@ const views = {
 
 function show(name) {
   for (const [key, node] of Object.entries(views)) node.classList.toggle('hidden', key !== name);
+  // Keep a QR on screen whenever the big one is not visible.
+  el('corner').classList.toggle('hidden', name === 'idle' || name === 'closed');
 }
 
 async function api(path) {
@@ -59,7 +63,9 @@ function renderIdle() {
     const qr = qrcode(0, 'M');
     qr.addData(caseUrl());
     qr.make();
-    el('idle-qr').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+    const svg = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+    el('idle-qr').innerHTML = svg;
+    el('corner-qr').innerHTML = svg;
   }
 
   el('idle-grid').replaceChildren(
@@ -111,13 +117,23 @@ function renderResult(win) {
   el('result-name').textContent = win.prize.name;
   el('result-subtitle').textContent = win.prize.subtitle || '';
   el('claim-code').textContent = win.claimCode;
-  el('claim-note').textContent = state.config.settings.claimNote;
+
+  // Handing out at the screen: the prize is the headline, the code is a
+  // small receipt. Otherwise the code is what they take to the counter.
+  const handout = state.config.settings.autoCollect;
+  el('claim-label').textContent = handout ? 'Grab it from the counter!' : 'Claim code';
+  el('claim-code').classList.toggle('dresult__code--small', handout);
+  el('claim-note').textContent = handout ? `Receipt code ${win.claimCode}` : state.config.settings.claimNote;
+  if (handout) el('claim-code').textContent = '🎉';
   return color;
 }
 
 async function play(win) {
   state.playing = true;
   updateQueueBadge();
+
+  // Pick up setting changes (hand-out mode, new prizes) made since last play.
+  await refreshConfig();
 
   show('spin');
   const pool = state.config.prizes;
@@ -132,13 +148,22 @@ async function play(win) {
     confettiBurst(el('confetti'), color, 220);
   }
 
-  // Hold the result, counting down, unless someone else is waiting.
+  // Hold the result, counting down; shorter when someone is waiting, and
+  // Space skips straight on.
   const counter = el('result-count');
-  const hold = state.queue.length ? Math.min(RESULT_MS, 7000) : RESULT_MS;
-  for (let left = Math.ceil(hold / 1000); left > 0; left--) {
+  const hold = state.queue.length ? RESULT_QUEUED_MS : RESULT_MS;
+  let skipped = false;
+  const skipPromise = new Promise((resolve) => {
+    state.skip = () => {
+      skipped = true;
+      resolve();
+    };
+  });
+  for (let left = Math.ceil(hold / 1000); left > 0 && !skipped; left--) {
     counter.textContent = left;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await Promise.race([new Promise((resolve) => setTimeout(resolve, 1000)), skipPromise]);
   }
+  state.skip = null;
 
   state.playing = false;
   next();
@@ -233,6 +258,10 @@ el('gate-start').addEventListener('click', async () => {
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'f' || event.key === 'F') toggleFullscreen();
+  if ((event.key === ' ' || event.key === 'ArrowRight' || event.key === 'Enter') && state.skip) {
+    event.preventDefault();
+    state.skip();
+  }
   if (event.key === 'm' || event.key === 'M') {
     state.muted = !state.muted;
     el('status').textContent = state.muted ? 'Muted' : 'Live';

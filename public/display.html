@@ -20,7 +20,7 @@
       <p class="sub">Put this on the laptop, tablet or TV at the table. When a customer scans the QR, the case opens here.</p>
       <button class="btn btn--primary" id="gate-start" type="button" style="margin-top: 24px">Start display</button>
       <p class="gate__error hidden" id="gate-error" role="alert"></p>
-      <p class="muted" style="margin-top: 14px; font-size: 13px">Press <kbd>F</kbd> for fullscreen · <kbd>M</kbd> to mute</p>
+      <p class="muted" style="margin-top: 14px; font-size: 13px"><kbd>F</kbd> fullscreen · <kbd>Space</kbd> next customer · <kbd>M</kbd> mute</p>
     </div>
   </div>
 
@@ -70,16 +70,22 @@
           <p class="dresult__sub muted" id="result-subtitle"></p>
         </div>
         <div class="dresult__claim">
-          <p class="dresult__label">Claim code</p>
+          <p class="dresult__label" id="claim-label">Claim code</p>
           <p class="dresult__code" id="claim-code"></p>
           <p class="dsub" id="claim-note"></p>
-          <p class="dresult__next muted">Also on your phone · next in <span id="result-count">12</span>s</p>
+          <p class="dresult__next muted">Also on your phone · next in <span id="result-count">8</span>s</p>
         </div>
       </div>
     </section>
   </main>
 
   <div class="dqueue hidden" id="queue"></div>
+
+  <!-- Small QR that stays up while a reel plays, so the next customers can scan. -->
+  <div class="dcorner hidden" id="corner">
+    <div class="dcorner__qr" id="corner-qr"></div>
+    <p class="dcorner__text">Scan to<br />open yours</p>
+  </div>
 
   <canvas class="confetti hidden" id="confetti"></canvas>
 

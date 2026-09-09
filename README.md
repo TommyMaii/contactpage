@@ -26,19 +26,27 @@ functions/_lib/    auth, storage, roll logic
    shows your branding, the prizes, and the QR code to scan. Flip the
    **Live** switch on in the admin panel.
 3. **Customer buys something and scans the QR.** Their phone says "look at
-   the screen"; on the display the reel spins and stops on their prize with a
-   big six-character **claim code**. A few seconds later the same prize and
-   code appear on their phone too.
-4. **They show you the code**, you type it into the **Pulls** tab (or tap
-   *Collected* next to it) and hand over the prize.
+   the screen"; on the display the reel spins and stops on their prize. A
+   few seconds later the same prize appears on their phone too.
+4. **Hand over the prize.** With *Hand out at the screen* on (the default)
+   the pull is marked collected automatically and nobody types anything.
+   Press **Space** on the display to move to the next customer early. A
+   small QR stays in the corner while a reel plays, so the next people scan
+   without waiting; scans queue up and play in order.
 5. **After** — export the CSV if you want a record, then *Delete all pulls*
    in Settings to reset for next time. Flip **Live** off whenever you leave
    the table so the QR stops working.
 
+Prefer to hand out prizes at a separate counter? Turn *Hand out at the
+screen* off: the display and the phone then show a six-character **claim
+code**, which you type into the **Pulls** tab (or tap *Collected*) when the
+customer comes to collect.
+
 Prefer the reel on the customer's own phone? Settings → **Where the case
 opens** → *On the customer's phone*. Then scanning shows the case, they tap
 it, and the reel plays in their hand. The **QR sign** tab prints a table sign
-for either mode.
+for either mode — handy so several people can scan at once without crowding
+the screen.
 
 Each phone gets **one open per hour** by default (a cookie identifies the
 phone; change the number in Settings if people buy more than once). The roll

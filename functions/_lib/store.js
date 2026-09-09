@@ -32,6 +32,9 @@ export const DEFAULT_SETTINGS = {
   // 'screen': the reel plays on /display.html at the table and the phone just
   // says "watch the screen". 'phone': the reel plays on the customer's phone.
   caseMode: 'screen',
+  // Screen mode: staff hand the prize over as soon as it shows on the
+  // display, so pulls are marked collected automatically.
+  autoCollect: true,
   requireTicket: false,
   showOdds: false,
   maxOpensPerHour: 1,
@@ -67,6 +70,7 @@ export async function saveSettings(env, patch) {
     claimNote: str(patch.claimNote, current.claimNote, 200),
     closedMessage: str(patch.closedMessage, current.closedMessage, 200),
     caseMode: patch.caseMode === 'phone' || patch.caseMode === 'screen' ? patch.caseMode : current.caseMode,
+    autoCollect: bool(patch.autoCollect, current.autoCollect),
     requireTicket: bool(patch.requireTicket, current.requireTicket),
     showOdds: bool(patch.showOdds, current.showOdds),
     live: bool(patch.live, current.live),
@@ -182,7 +186,7 @@ export async function putTicket(env, ticket) {
 
 /* -------------------------------------------------------------------- wins */
 
-export async function recordWin(env, { prize, ticketCode, source }) {
+export async function recordWin(env, { prize, ticketCode, source, collected = false }) {
   const createdAt = Date.now();
   const win = {
     id: newWinId(),
@@ -195,8 +199,8 @@ export async function recordWin(env, { prize, ticketCode, source }) {
     imageId: prize.imageId || '',
     ticketCode: ticketCode || null,
     source: source || 'open',
-    redeemed: false,
-    redeemedAt: null,
+    redeemed: collected,
+    redeemedAt: collected ? createdAt : null,
   };
   await Promise.all([
     db(env).put(KEYS.win(win.id), JSON.stringify(win)),

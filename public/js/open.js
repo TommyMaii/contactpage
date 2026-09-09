@@ -104,7 +104,10 @@ function showResult(win, { celebrate = true } = {}) {
   el('result-name').textContent = win.prize.name;
   el('result-subtitle').textContent = win.prize.subtitle || '';
   el('claim-code').textContent = win.claimCode;
-  el('claim-note').textContent = state.config?.settings.claimNote || '';
+  const handout = state.config?.settings.caseMode === 'screen' && state.config?.settings.autoCollect;
+  el('claim-note').textContent = handout
+    ? 'Grab your prize from the counter — this code is your receipt.'
+    : state.config?.settings.claimNote || '';
 
   show('open');
   el('result').classList.remove('hidden');
