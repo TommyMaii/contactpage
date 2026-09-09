@@ -256,6 +256,11 @@ el('gate-start').addEventListener('click', async () => {
   startPolling();
 });
 
+el('btn-full').addEventListener('click', toggleFullscreen);
+el('btn-next').addEventListener('click', () => {
+  if (state.skip) state.skip();
+});
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'f' || event.key === 'F') toggleFullscreen();
   if ((event.key === ' ' || event.key === 'ArrowRight' || event.key === 'Enter') && state.skip) {

@@ -129,6 +129,8 @@
 }
 
 .prize__odds { font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
+.prize__lock { font-size: 12px; color: var(--epic); font-weight: 600; }
+.rolls-stat { margin-top: 6px; font-size: 13px; color: var(--gold); font-weight: 600; }
 .prize__foot .spacer { margin-left: auto; }
 
 .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }

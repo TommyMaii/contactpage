@@ -12,6 +12,7 @@ export const KEYS = {
   claim: (claimCode) => `claim:${claimCode}`,
   rate: (subject, bucket) => `rate:${subject}:${bucket}`,
   screen: (name) => `screen:${name}`,
+  rolls: 'counter:rolls',
 };
 
 export const RARITIES = [
@@ -37,6 +38,9 @@ export const DEFAULT_SETTINGS = {
   autoCollect: true,
   requireTicket: false,
   showOdds: false,
+  // Off: anyone can scan as often as they like (staff are at the table
+  // anyway). On: each phone gets maxOpensPerHour opens.
+  limitOpens: false,
   maxOpensPerHour: 1,
   live: true,
   closedMessage: 'The case is closed right now. Come find us at the table!',
@@ -71,6 +75,7 @@ export async function saveSettings(env, patch) {
     closedMessage: str(patch.closedMessage, current.closedMessage, 200),
     caseMode: patch.caseMode === 'phone' || patch.caseMode === 'screen' ? patch.caseMode : current.caseMode,
     autoCollect: bool(patch.autoCollect, current.autoCollect),
+    limitOpens: bool(patch.limitOpens, current.limitOpens),
     requireTicket: bool(patch.requireTicket, current.requireTicket),
     showOdds: bool(patch.showOdds, current.showOdds),
     live: bool(patch.live, current.live),
@@ -105,28 +110,43 @@ function normalizePrize(raw = {}) {
     weight: clamp(raw.weight, 1, 0, 1e6),
     // -1 means unlimited.
     stock: raw.stock === -1 || raw.stock === '-1' ? -1 : clamp(raw.stock, 0, 0, 1e6),
+    // Cannot be won until this many pulls have happened; still shown in the
+    // reel and the showcase so it looks winnable from the start.
+    unlockAfter: clamp(raw.unlockAfter, 0, 0, 1e6),
     active: bool(raw.active, true),
   };
 }
 
-/** Prizes that can actually come out of the case right now. */
-export function drawablePrizes(prizes) {
-  return prizes.filter(
-    (p) => p.active && p.weight > 0 && (p.stock === -1 || p.stock > 0),
-  );
+/** Prizes customers see: in the case and in stock (locked ones included). */
+export function visiblePrizes(prizes) {
+  return prizes.filter((p) => p.active && (p.stock === -1 || p.stock > 0));
 }
 
-export function oddsFor(prizes) {
-  const pool = drawablePrizes(prizes);
+/** Prizes that can actually come out of the case right now. */
+export function drawablePrizes(prizes, rolls = Infinity) {
+  return visiblePrizes(prizes).filter((p) => p.weight > 0 && p.unlockAfter <= rolls);
+}
+
+function weightedOdds(pool) {
   const total = pool.reduce((sum, p) => sum + p.weight, 0);
   const odds = new Map();
   for (const p of pool) odds.set(p.id, total > 0 ? p.weight / total : 0);
   return odds;
 }
 
+/** True odds this moment (locked and sold-out prizes at 0). */
+export function oddsFor(prizes, rolls = Infinity) {
+  return weightedOdds(drawablePrizes(prizes, rolls));
+}
+
+/** What customers are shown when "show odds" is on: as if nothing were locked. */
+export function displayOdds(prizes) {
+  return weightedOdds(visiblePrizes(prizes).filter((p) => p.weight > 0));
+}
+
 /** Weighted pick over the drawable pool, using the crypto RNG. */
-export function rollPrize(prizes) {
-  const pool = drawablePrizes(prizes);
+export function rollPrize(prizes, rolls = Infinity) {
+  const pool = drawablePrizes(prizes, rolls);
   if (pool.length === 0) return null;
   const total = pool.reduce((sum, p) => sum + p.weight, 0);
   let target = secureRandom() * total;
@@ -143,7 +163,8 @@ export function rollPrize(prizes) {
  * so the reel looks honest.
  */
 export function buildReel(prizes, winner, length = 56, winnerIndex = 48) {
-  const pool = drawablePrizes(prizes);
+  const pool = visiblePrizes(prizes);
+  if (pool.length === 0) pool.push(winner);
   const reel = [];
   for (let i = 0; i < length; i++) {
     reel.push(i === winnerIndex ? winner : pool[Math.floor(secureRandom() * pool.length)]);
@@ -171,6 +192,19 @@ export async function consumeStock(env, prizeId) {
   prize.stock = Math.max(0, prize.stock - 1);
   await db(env).put(KEYS.prizes, JSON.stringify(prizes));
   return prizes;
+}
+
+/* ------------------------------------------------------------ roll counter */
+
+export async function getRollCount(env) {
+  return Number((await db(env).get(KEYS.rolls)) || 0);
+}
+
+/** Best-effort increment (KV has no atomic ops; a lost count here is harmless). */
+export async function bumpRollCount(env) {
+  const next = (await getRollCount(env)) + 1;
+  await db(env).put(KEYS.rolls, String(next));
+  return next;
 }
 
 /* ----------------------------------------------------------------- tickets */

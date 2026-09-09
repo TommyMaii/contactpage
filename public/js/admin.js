@@ -114,8 +114,14 @@ el('tabs').addEventListener('click', (event) => {
 
 /* ---------------------------------------------------------------- prizes */
 
+function isLocked(prize) {
+  return (prize.unlockAfter || 0) > (state.stats?.rolls || 0);
+}
+
 function computeOdds(list) {
-  const pool = list.filter((p) => p.active && p.weight > 0 && (p.stock === -1 || p.stock > 0));
+  const pool = list.filter(
+    (p) => p.active && p.weight > 0 && (p.stock === -1 || p.stock > 0) && !isLocked(p),
+  );
   const total = pool.reduce((sum, p) => sum + p.weight, 0);
   const odds = new Map();
   for (const p of pool) odds.set(p.id, total ? (p.weight / total) * 100 : 0);
@@ -137,13 +143,22 @@ function newPrize() {
     imageId: '',
     weight: 10,
     stock: -1,
+    unlockAfter: 0,
     active: true,
   };
+}
+
+function renderRollStat() {
+  const node = el('rolls-stat');
+  if (!node) return;
+  const rolls = state.stats?.rolls || 0;
+  node.textContent = `${rolls} pull${rolls === 1 ? '' : 's'} so far`;
 }
 
 function renderPrizes() {
   const list = el('prize-list');
   const odds = computeOdds(state.draft);
+  renderRollStat();
   el('prize-empty').classList.toggle('hidden', state.draft.length > 0);
 
   list.replaceChildren(
@@ -234,6 +249,20 @@ function renderPrizes() {
           ),
           h(
             'label',
+            { class: 'field', style: 'margin:0' },
+            h('span', { class: 'field__label' }, 'Unlock after'),
+            h('input', {
+              class: 'input',
+              type: 'number',
+              min: 0,
+              step: 1,
+              value: prize.unlockAfter || 0,
+              title: 'Number of pulls before this prize can be won. 0 = from the start.',
+              oninput: bind('unlockAfter', (v) => Math.max(0, Number(v) || 0)),
+            }),
+          ),
+          h(
+            'label',
             { class: 'field', style: 'margin:0; grid-column: 1 / -1' },
             h('span', { class: 'field__label' }, 'Subtitle'),
             h('input', { class: 'input', value: prize.subtitle, placeholder: 'Optional — set, condition, note…', maxlength: 80, oninput: bind('subtitle') }),
@@ -241,7 +270,9 @@ function renderPrizes() {
           h(
             'div',
             { class: 'prize__foot' },
-            h('span', {}, 'Odds: ', h('span', { class: 'prize__odds', 'data-odds': prize.id }, `${(odds.get(prize.id) || 0).toFixed(1)}%`)),
+            h('span', {}, 'Odds now: ', h('span', { class: 'prize__odds', 'data-odds': prize.id }, `${(odds.get(prize.id) || 0).toFixed(1)}%`)),
+            h('span', { class: `prize__lock${isLocked(prize) ? '' : ' hidden'}`, 'data-lock': prize.id },
+              `🔒 locked until pull #${prize.unlockAfter || 0}`),
             h(
               'label',
               { class: 'switch' },
@@ -296,6 +327,12 @@ function renderPrizes() {
 
 function refreshOdds() {
   const odds = computeOdds(state.draft);
+  for (const node of document.querySelectorAll('[data-lock]')) {
+    const prize = state.draft.find((p) => p.id === node.dataset.lock);
+    if (!prize) continue;
+    node.classList.toggle('hidden', !isLocked(prize));
+    node.textContent = `🔒 locked until pull #${prize.unlockAfter || 0}`;
+  }
   for (const node of document.querySelectorAll('[data-odds]')) {
     node.textContent = `${(odds.get(node.dataset.odds) || 0).toFixed(1)}%`;
   }
@@ -368,7 +405,7 @@ el('save-prizes').addEventListener('click', async () => {
   }
   el('save-prizes').disabled = true;
   try {
-    const { prizes } = await api('/api/admin/prizes', {
+    const { prizes, rolls } = await api('/api/admin/prizes', {
       method: 'PUT',
       body: JSON.stringify({ prizes: state.draft }),
     });
@@ -647,6 +684,7 @@ el('settings-form').addEventListener('submit', async (event) => {
     closedMessage: form.elements.closedMessage.value,
     caseMode: form.elements.caseMode.value,
     autoCollect: form.elements.autoCollect.checked,
+    limitOpens: form.elements.limitOpens.checked,
     requireTicket: form.elements.requireTicket.checked,
     showOdds: form.elements.showOdds.checked,
     maxOpensPerHour: Number(form.elements.maxOpensPerHour.value),
@@ -707,6 +745,7 @@ async function boot() {
   el('count-pulls').textContent = data.stats.wins;
   el('count-tickets').textContent = data.stats.tickets;
 
+  state.stats = data.stats || {};
   fillSettings(data.settings);
   renderPrizes();
   markDirty(false);

@@ -52,6 +52,7 @@
         <div>
           <h2>What's in the case</h2>
           <p>Weight sets the odds. Stock counts down as items are won; leave it unlimited for freebies.</p>
+          <p class="rolls-stat" id="rolls-stat"></p>
         </div>
         <div class="spacer"></div>
         <button class="btn" id="add-prize" type="button">+ Add prize</button>
@@ -223,11 +224,12 @@
             <label class="switch" style="margin: 6px 0"><input type="checkbox" name="requireTicket" /> Require a ticket code to open</label>
             <span class="field__hint">Off (default): customers scan the QR sign and open straight away. On: each open needs a printed ticket slip.</span>
           </div>
-          <label class="field">
-            <span class="field__label">Opens per phone per hour</span>
-            <input class="input" name="maxOpensPerHour" type="number" min="1" max="100" />
-            <span class="field__hint">Only used without tickets. 1 = one open per visit; raise it if people buy several times.</span>
-          </label>
+          <div class="field">
+            <span class="field__label">Limits</span>
+            <label class="switch" style="margin: 6px 0"><input type="checkbox" name="limitOpens" /> Limit opens per phone</label>
+            <span class="field__hint">Off (default): no limits, scan as often as you like — staff are at the table anyway. On: each phone gets the number below per hour.</span>
+            <input class="input" name="maxOpensPerHour" type="number" min="1" max="100" style="margin-top: 8px; max-width: 160px" />
+          </div>
 
           <div class="field field--wide">
             <span class="field__label">Display</span>

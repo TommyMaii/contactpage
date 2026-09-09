@@ -20,7 +20,7 @@
       <p class="sub">Put this on the laptop, tablet or TV at the table. When a customer scans the QR, the case opens here.</p>
       <button class="btn btn--primary" id="gate-start" type="button" style="margin-top: 24px">Start display</button>
       <p class="gate__error hidden" id="gate-error" role="alert"></p>
-      <p class="muted" style="margin-top: 14px; font-size: 13px"><kbd>F</kbd> fullscreen · <kbd>Space</kbd> next customer · <kbd>M</kbd> mute</p>
+      <p class="muted" style="margin-top: 14px; font-size: 13px"><kbd>F</kbd> fullscreen · <kbd>Space</kbd> next customer · <kbd>M</kbd> mute — or use the buttons top-right</p>
     </div>
   </div>
 
@@ -28,6 +28,8 @@
     <span class="brand"><span class="brand__mark"></span><span data-store-name>Hatamon</span></span>
     <span class="dtop__case" data-case-name></span>
     <span class="dtop__status" id="status"><span class="dot"></span> Live</span>
+    <button class="dbtn" id="btn-next" type="button" title="Next customer (Space)">Next ▶</button>
+    <button class="dbtn" id="btn-full" type="button" title="Fullscreen (F)">⛶</button>
   </header>
 
   <main class="dstage">

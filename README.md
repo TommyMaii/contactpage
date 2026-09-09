@@ -48,11 +48,13 @@ it, and the reel plays in their hand. The **QR sign** tab prints a table sign
 for either mode — handy so several people can scan at once without crowding
 the screen.
 
-Each phone gets **one open per hour** by default (a cookie identifies the
-phone; change the number in Settings if people buy more than once). The roll
-happens on the server, so the odds cannot be changed from the phone, and the
-reel is generated from the same prize pool with the winner placed at a fixed
-position. A claim code can only be marked collected once.
+There are **no limits by default**: staff are at the table, so anyone can
+scan as often as they are told to. If you ever run it unattended, Settings →
+*Limit opens per phone* gives each phone N opens per hour (a cookie
+identifies the phone). The roll happens on the server, so the odds cannot be
+changed from the phone, and the reel is generated from the same prize pool
+with the winner placed at a fixed position. A claim code can only be marked
+collected once.
 
 If several people scan in a row, the display plays them one after another
 and shows "2 more waiting". A screen name in the URL (`/display.html?screen=b`
@@ -67,6 +69,19 @@ pool automatically and the others' odds rescale.
 
 Toggle **Show odds to customers** in Settings if you want the percentages
 visible on the customer screen.
+
+### Locking expensive prizes until you have earned them
+
+Every prize has an **Unlock after** number: how many pulls must have
+happened before it can be won. A graded card with *Unlock after 40* sits in
+the reel and the showcase from the first customer and looks exactly as
+winnable as everything else, but has a 0 % chance until the 40th pull, after
+which its normal weight applies. The Prizes tab shows "🔒 locked until pull
+#40" and the running pull count. *Delete all pulls* in Settings resets the
+count to zero.
+
+If *Show odds to customers* is on, the percentages shown are computed as if
+nothing were locked, so a locked prize does not give itself away.
 
 ### Ticket mode (optional)
 
@@ -147,6 +162,9 @@ session cookie set by `POST /api/admin/login`.
   polls at 2 s (~43k reads over a full day), so the free plan comfortably
   covers roughly 150 opens a day. Busier than that, or running several
   events a month? Workers Paid is USD 5/month and lifts writes to a million.
+- **The display works on a phone too.** Open `/display.html` on any phone or
+  tablet: the layout stacks, and the ⛶ and *Next ▶* buttons top-right replace
+  the keyboard shortcuts.
 - **Display latency.** The display sees a scan instantly when the phone and
   the display reach the same Cloudflare location, which is the normal case
   at a venue. Rarely (phone on a different carrier route) it can take up to

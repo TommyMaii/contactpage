@@ -274,7 +274,8 @@ async function boot() {
   renderShowcase(state.config.prizes);
   readUrl();
 
-  if (await restoreLastWin()) return;
+  // Without limits every scan is a fresh pull, so never replay an old one.
+  if (state.config.settings.limitOpens && (await restoreLastWin())) return;
   routeToStart();
 
   if (state.ticket) el('ticket-input').value = state.ticket;

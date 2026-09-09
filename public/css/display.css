@@ -73,6 +73,23 @@ body.display { overflow: hidden; height: 100vh; }
 
 .dtop__status.is-off .dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
 
+.dbtn {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 12px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.dbtn:hover { opacity: 1; color: var(--text); }
+
 .dstage {
   height: 100vh;
   padding: 72px 40px 40px;
@@ -267,4 +284,47 @@ body.display { overflow: hidden; height: 100vh; }
   .didle, .dresult { grid-template-columns: 1fr; gap: 28px; text-align: center; }
   .dqr { margin-inline: auto; }
   .showcase__grid--display { max-height: 40vh; }
+}
+
+/* ------------------------------------------------- phones and small tablets */
+
+@media (max-width: 760px) {
+  body.display { overflow: auto; height: auto; min-height: 100vh; }
+
+  .dtop { padding: 12px 14px; gap: 10px; font-size: 13px; }
+  .dtop .brand { font-size: 12px; }
+  .dtop__case { display: none; }
+  .dbtn { padding: 8px 12px; opacity: 0.9; }
+
+  .dstage { display: block; height: auto; min-height: 100vh; padding: 68px 16px 150px; }
+  .dscreen { max-width: none; }
+
+  .dheadline { font-size: clamp(28px, 9vw, 40px); }
+  .dsub { font-size: 15px; }
+
+  .didle { display: block; text-align: center; }
+  .didle__left { margin-bottom: 26px; }
+  .dqr { width: min(260px, 66vw); margin: 20px auto 10px; padding: 12px; border-radius: 16px; }
+  .didle__right .showcase__title { margin-top: 8px; }
+  .showcase__grid--display { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; max-height: none; }
+  .showcase__grid--display .item { height: 150px; }
+  .showcase__grid--display .item__name { font-size: 12px; }
+
+  .reel--display { height: 200px; }
+  .reel::before, .reel::after { width: 36px; }
+
+  .dresult { display: block; text-align: center; }
+  .dresult__card { padding: 18px; border-radius: 20px; margin-bottom: 18px; }
+  .dresult__art { margin: 12px 0 14px; }
+  .dresult__art span { font-size: 64px; }
+  .dresult__code { font-size: clamp(36px, 12vw, 56px); letter-spacing: 0.14em; text-indent: 0.14em; }
+  .dresult__code--small { font-size: 32px; }
+  .dresult__next { margin-top: 14px; }
+
+  .dcorner { left: 12px; bottom: 12px; padding: 6px; gap: 8px; border-radius: 12px; }
+  .dcorner__qr { width: 72px; height: 72px; padding: 4px; }
+  .dcorner__text { font-size: 10px; letter-spacing: 0.06em; }
+
+  .dqueue { right: 12px; bottom: 12px; padding: 8px 12px; font-size: 12px; }
+  .gate__card { padding: 24px; }
 }

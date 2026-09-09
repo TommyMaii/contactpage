@@ -17,10 +17,13 @@ import {
   KEYS,
   RARITIES,
   buildReel,
+  bumpRollCount,
   checkRateLimit,
   consumeStock,
   db,
+  displayOdds,
   drawablePrizes,
+  getRollCount,
   getPrizes,
   getSettings,
   getTicket,
@@ -38,6 +41,7 @@ import {
   saveSettings,
   screenName,
   updateWin,
+  visiblePrizes,
 } from '../_lib/store.js';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -113,8 +117,8 @@ async function route(path, method, context, env, request) {
 
 async function handleCase(env) {
   const [settings, prizes] = await Promise.all([getSettings(env), getPrizes(env)]);
-  const odds = oddsFor(prizes);
-  const pool = drawablePrizes(prizes);
+  const odds = displayOdds(prizes);
+  const pool = visiblePrizes(prizes);
   return json({
     ok: true,
     settings: {
@@ -124,6 +128,7 @@ async function handleCase(env) {
       claimNote: settings.claimNote,
       caseMode: settings.caseMode,
       autoCollect: settings.autoCollect,
+      limitOpens: settings.limitOpens,
       requireTicket: settings.requireTicket,
       showOdds: settings.showOdds,
       live: settings.live,
@@ -142,8 +147,8 @@ async function handleOpen(env, request) {
     throw new HttpError(403, settings.closedMessage, { code: 'closed' });
   }
 
-  const prizes = await getPrizes(env);
-  if (drawablePrizes(prizes).length === 0) {
+  const [prizes, rolls] = await Promise.all([getPrizes(env), getRollCount(env)]);
+  if (drawablePrizes(prizes, rolls).length === 0) {
     throw new HttpError(409, 'No prizes are stocked right now. Grab a staff member.', {
       code: 'empty',
     });
@@ -178,7 +183,7 @@ async function handleOpen(env, request) {
 
   let deviceId = null;
   let setCookie = null;
-  if (!ticket) {
+  if (!ticket && settings.limitOpens) {
     deviceId = readCookie(request, DEVICE_COOKIE);
     const isNewDevice = !deviceId || !/^[a-z0-9]{16}$/.test(deviceId);
     if (isNewDevice) {
@@ -200,7 +205,7 @@ async function handleOpen(env, request) {
   }
 
   const onScreen = settings.caseMode === 'screen';
-  const winner = rollPrize(prizes);
+  const winner = rollPrize(prizes, rolls);
   const win = await recordWin(env, {
     prize: winner,
     ticketCode: ticket ? ticket.code : null,
@@ -214,7 +219,7 @@ async function handleOpen(env, request) {
     await putTicket(env, ticket);
   }
 
-  await consumeStock(env, winner.id);
+  await Promise.all([consumeStock(env, winner.id), bumpRollCount(env)]);
 
   if (onScreen) {
     await pushToScreen(env, screenName(body.screen), { win: winView(win) });
@@ -284,20 +289,21 @@ async function handleLogin(env, request) {
 }
 
 async function handleState(env) {
-  const [settings, prizes, winKeys, ticketKeys] = await Promise.all([
+  const [settings, prizes, rolls, winKeys, ticketKeys] = await Promise.all([
     getSettings(env),
     getPrizes(env),
+    getRollCount(env),
     listAll(env, 'win:'),
     listAll(env, 'ticket:'),
   ]);
-  const odds = oddsFor(prizes);
+  const odds = oddsFor(prizes, rolls);
   return json({
     ok: true,
     settings,
     defaults: DEFAULT_SETTINGS,
     rarities: RARITIES,
     prizes: prizes.map((p) => ({ ...p, odds: Number(((odds.get(p.id) || 0) * 100).toFixed(2)) })),
-    stats: { wins: winKeys.length, tickets: ticketKeys.length },
+    stats: { wins: winKeys.length, tickets: ticketKeys.length, rolls },
   });
 }
 
@@ -308,10 +314,11 @@ async function handleSaveSettings(env, request) {
 
 async function handleSavePrizes(env, request) {
   const body = await readJson(request);
-  const prizes = await savePrizes(env, body.prizes);
-  const odds = oddsFor(prizes);
+  const [prizes, rolls] = await Promise.all([savePrizes(env, body.prizes), getRollCount(env)]);
+  const odds = oddsFor(prizes, rolls);
   return json({
     ok: true,
+    rolls,
     prizes: prizes.map((p) => ({ ...p, odds: Number(((odds.get(p.id) || 0) * 100).toFixed(2)) })),
   });
 }
@@ -446,7 +453,7 @@ async function handleRedeem(env, request) {
 async function handlePurge(env, request) {
   const body = await readJson(request);
   const targets = {
-    wins: ['win:', 'claim:', 'screen:'],
+    wins: ['win:', 'claim:', 'screen:', 'counter:'],
     tickets: ['ticket:'],
   };
   const prefixes = targets[body.what];
