@@ -19,7 +19,7 @@ function b64url(bytes) {
  * the admin password so a fresh deploy still works (changing the password then
  * invalidates every existing session, which is the behaviour you want anyway).
  */
-async function signingKey(env) {
+export async function signingKey(env) {
   const material = env.SESSION_SECRET || `derived:${adminPassword(env)}`;
   return crypto.subtle.importKey(
     'raw',

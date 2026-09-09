@@ -20,6 +20,7 @@ const state = {
   muted: false,
   pollTimer: null,
   skip: null, // resolver that cuts the result hold short
+  scanUrl: '', // rotating one-spin-per-scan link from the server
 };
 
 const views = {
@@ -43,9 +44,20 @@ async function api(path) {
 }
 
 function caseUrl() {
+  if (state.scanUrl) return state.scanUrl;
   const url = new URL('/', location.origin);
   if (state.screen !== 'main') url.searchParams.set('screen', state.screen);
   return url.toString();
+}
+
+function renderQr() {
+  if (typeof qrcode !== 'function') return;
+  const qr = qrcode(0, 'M');
+  qr.addData(caseUrl());
+  qr.make();
+  const svg = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+  el('idle-qr').innerHTML = svg;
+  el('corner-qr').innerHTML = svg;
 }
 
 /* ----------------------------------------------------------------- idle */
@@ -59,14 +71,7 @@ function renderIdle() {
   el('closed-message').textContent = settings.closedMessage;
   el('status').classList.toggle('is-off', !settings.live);
 
-  if (typeof qrcode === 'function') {
-    const qr = qrcode(0, 'M');
-    qr.addData(caseUrl());
-    qr.make();
-    const svg = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
-    el('idle-qr').innerHTML = svg;
-    el('corner-qr').innerHTML = svg;
-  }
+  renderQr();
 
   el('idle-grid').replaceChildren(
     ...prizes.map((p) => itemNode(p, state.rarity, { withOdds: settings.showOdds })),
@@ -187,7 +192,11 @@ function next() {
 async function poll() {
   if (document.hidden) return;
   try {
-    const { entries } = await api(`/api/display?screen=${encodeURIComponent(state.screen)}`);
+    const { entries, scanUrl } = await api(`/api/display?screen=${encodeURIComponent(state.screen)}`);
+    if (scanUrl && scanUrl !== state.scanUrl) {
+      state.scanUrl = scanUrl;
+      renderQr();
+    }
     for (const entry of entries) {
       const win = entry.win;
       if (!win || state.seen.includes(win.id)) continue;
@@ -246,8 +255,12 @@ el('gate-start').addEventListener('click', async () => {
   // Anything already queued before the display was opened is history, not a
   // show to replay: mark it seen so only new scans play.
   try {
-    const { entries } = await api(`/api/display?screen=${encodeURIComponent(state.screen)}`);
+    const { entries, scanUrl } = await api(`/api/display?screen=${encodeURIComponent(state.screen)}`);
     state.seen = entries.map((e) => e.win && e.win.id).filter(Boolean);
+    if (scanUrl) {
+      state.scanUrl = scanUrl;
+      renderQr();
+    }
   } catch {
     /* fine */
   }

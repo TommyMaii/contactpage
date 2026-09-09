@@ -12,6 +12,7 @@ import {
 } from '../_lib/auth.js';
 import { newId, newTicketCode, normalizeCode } from '../_lib/ids.js';
 import { readCookie } from '../_lib/auth.js';
+import { WINDOW_MS, currentScanKey, signSpinId, verifyScanKey } from '../_lib/scan.js';
 import {
   DEFAULT_SETTINGS,
   KEYS,
@@ -24,12 +25,14 @@ import {
   displayOdds,
   drawablePrizes,
   getRollCount,
+  getSpin,
   getPrizes,
   getSettings,
   getTicket,
   getWinByClaimCode,
   getWinById,
   listAll,
+  markSpin,
   oddsFor,
   publicPrize,
   pushToScreen,
@@ -46,11 +49,22 @@ import {
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
-// Ticketless mode identifies a phone by a long-lived cookie. Event venues share
-// one IP across every phone on the WiFi, so the IP limit only counts *new*
-// devices (someone clearing cookies to re-roll), never normal opens.
+// A long-lived cookie identifies the phone: together with the scan key it makes
+// each scan good for exactly one spin. Event venues share one IP across every
+// phone on the WiFi, so the optional IP limit only counts *new* devices
+// (someone clearing cookies to re-roll), never normal opens.
 const DEVICE_COOKIE = 'hatamon_device';
 const NEW_DEVICES_PER_IP_PER_HOUR = 30;
+
+function deviceFrom(request) {
+  const existing = readCookie(request, DEVICE_COOKIE);
+  if (existing && /^[a-z0-9]{16}$/.test(existing)) return { deviceId: existing, isNew: false };
+  return { deviceId: newId(16), isNew: true };
+}
+
+function deviceCookie(deviceId) {
+  return `${DEVICE_COOKIE}=${deviceId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`;
+}
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -181,14 +195,35 @@ async function handleOpen(env, request) {
     await putTicket(env, ticket);
   }
 
-  let deviceId = null;
-  let setCookie = null;
+  const { deviceId, isNew } = deviceFrom(request);
+  const setCookie = isNew ? deviceCookie(deviceId) : null;
+  const screen = screenName(body.screen);
+
+  // Which "scan" is this? A key from the display's QR, or the printed sign.
+  let spinId = null;
+  if (!ticket) {
+    if (body.key) {
+      spinId = await verifyScanKey(env, screen, body.key);
+      if (!spinId) {
+        throw new HttpError(410, 'That QR code has expired. Scan it again for a new pull.', {
+          code: 'rescan',
+        });
+      }
+    } else {
+      spinId = signSpinId();
+    }
+    const previousId = await getSpin(env, spinId, deviceId);
+    if (previousId) {
+      const previous = await getWinById(env, previousId);
+      throw new HttpError(409, 'This scan was already used. Scan the QR again for a new pull.', {
+        code: 'already',
+        win: previous ? winView(previous) : null,
+      });
+    }
+  }
+
   if (!ticket && settings.limitOpens) {
-    deviceId = readCookie(request, DEVICE_COOKIE);
-    const isNewDevice = !deviceId || !/^[a-z0-9]{16}$/.test(deviceId);
-    if (isNewDevice) {
-      deviceId = newId(16);
-      setCookie = `${DEVICE_COOKIE}=${deviceId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`;
+    if (isNew) {
       const ipOk = await checkRateLimit(env, `ip:${clientIp(request)}`, NEW_DEVICES_PER_IP_PER_HOUR);
       if (!ipOk) {
         throw new HttpError(429, 'Too many opens from this network right now. Come see us at the table!', {
@@ -219,24 +254,37 @@ async function handleOpen(env, request) {
     await putTicket(env, ticket);
   }
 
-  await Promise.all([consumeStock(env, winner.id), bumpRollCount(env)]);
+  await Promise.all([
+    consumeStock(env, winner.id),
+    bumpRollCount(env),
+    spinId ? markSpin(env, spinId, deviceId, win.id) : Promise.resolve(),
+    onScreen ? pushToScreen(env, screen, { win: winView(win) }) : Promise.resolve(),
+  ]);
 
-  if (onScreen) {
-    await pushToScreen(env, screenName(body.screen), { win: winView(win) });
-  }
-
-  const { reel, winnerIndex } = onScreen ? { reel: [], winnerIndex: 0 } : buildReel(prizes, winner);
+  // The phone always spins its own reel; in screen mode the display spins too.
+  const { reel, winnerIndex } = buildReel(prizes, winner);
   return json(
     { ok: true, onScreen, reel, winnerIndex, win: winView(win) },
     setCookie ? { headers: { 'set-cookie': setCookie } } : {},
   );
 }
 
-/** Polled by /display.html: the recent wins queued for that screen. */
+/** Polled by /display.html: queued wins plus the QR key to show right now. */
 async function handleDisplay(env, request) {
-  const name = screenName(new URL(request.url).searchParams.get('screen'));
-  const entries = await readScreen(env, name);
-  return json({ ok: true, screen: name, entries });
+  const url = new URL(request.url);
+  const name = screenName(url.searchParams.get('screen'));
+  const [entries, scan] = await Promise.all([readScreen(env, name), currentScanKey(env, name)]);
+  const scanUrl = new URL('/', url.origin);
+  scanUrl.searchParams.set('k', scan.key);
+  if (name !== 'main') scanUrl.searchParams.set('screen', name);
+  return json({
+    ok: true,
+    screen: name,
+    entries,
+    scanUrl: scanUrl.toString(),
+    rotatesIn: scan.rotatesIn,
+    windowMs: WINDOW_MS,
+  });
 }
 
 async function handleImage(env, id) {
@@ -453,7 +501,7 @@ async function handleRedeem(env, request) {
 async function handlePurge(env, request) {
   const body = await readJson(request);
   const targets = {
-    wins: ['win:', 'claim:', 'screen:', 'counter:'],
+    wins: ['win:', 'claim:', 'screen:', 'counter:', 'spin:'],
     tickets: ['ticket:'],
   };
   const prefixes = targets[body.what];

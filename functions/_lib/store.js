@@ -13,6 +13,7 @@ export const KEYS = {
   rate: (subject, bucket) => `rate:${subject}:${bucket}`,
   screen: (name) => `screen:${name}`,
   rolls: 'counter:rolls',
+  spin: (spinId, deviceId) => `spin:${spinId}:${deviceId}`,
 };
 
 export const RARITIES = [
@@ -192,6 +193,16 @@ export async function consumeStock(env, prizeId) {
   prize.stock = Math.max(0, prize.stock - 1);
   await db(env).put(KEYS.prizes, JSON.stringify(prizes));
   return prizes;
+}
+
+/* -------------------------------------------------------- one spin per scan */
+
+export async function getSpin(env, spinId, deviceId) {
+  return db(env).get(KEYS.spin(spinId, deviceId));
+}
+
+export async function markSpin(env, spinId, deviceId, winId) {
+  await db(env).put(KEYS.spin(spinId, deviceId), winId, { expirationTtl: 3600 });
 }
 
 /* ------------------------------------------------------------ roll counter */

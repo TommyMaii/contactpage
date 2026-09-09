@@ -68,18 +68,18 @@
         </div>
       </section>
 
-      <!-- Screen mode: the reel is playing on the shop display -->
-      <section class="screen center hidden" id="screen-watch">
+      <!-- The key in the QR was already used or has expired -->
+      <section class="screen center hidden" id="screen-rescan">
         <div class="watch">
-          <div class="watch__eyes" aria-hidden="true">👀</div>
-          <h1 class="headline">Look at the <em>screen</em></h1>
-          <p class="sub">Your case is opening on the big screen right now.</p>
-          <p class="watch__timer muted">Your prize shows here in <strong id="watch-count">9</strong>s</p>
+          <div class="watch__eyes" aria-hidden="true">📷</div>
+          <h1 class="headline">Scan the QR <em>again</em></h1>
+          <p class="sub">Each scan is good for one pull. Point your camera at the QR on the screen to open a new case.</p>
         </div>
       </section>
 
       <!-- Spinning + result -->
       <section class="screen hidden" id="screen-open">
+        <p class="open-hint muted hidden" id="open-hint">👀 It's on the big screen too</p>
         <div class="reel" id="reel">
           <div class="reel__marker"></div>
           <div class="reel__track" id="reel-track"></div>

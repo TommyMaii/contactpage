@@ -1,20 +1,10 @@
-// Customer flow. Two modes, chosen by staff in the admin panel:
-//  - 'screen': scanning auto-opens the case on the shop's display; this page
-//    says "watch the screen" and reveals the claim code once the reel is done.
-//  - 'phone':  the reel plays right here after a tap.
+// Customer flow. The QR on the display carries a key (?k=) that is good for
+// one spin per phone; a refresh shows the pull you already made. Modes:
+//  - 'screen': opens as soon as the page loads; the reel plays here AND on
+//    the shop display.
+//  - 'phone':  tap the case to open; the reel plays here only.
 
-import {
-  SPIN_MS,
-  buildReel,
-  confettiBurst,
-  itemNode,
-  makeRarityLookup,
-  spinReel,
-  tick,
-} from './reel.js';
-
-const STORAGE_KEY = 'hatamon:lastWin';
-const WATCH_REVEAL_MS = SPIN_MS + 2500;
+import { confettiBurst, itemNode, makeRarityLookup, spinReel, tick } from './reel.js';
 
 const el = (id) => document.getElementById(id);
 
@@ -24,7 +14,7 @@ const screens = {
   ticket: el('screen-ticket'),
   ready: el('screen-ready'),
   open: el('screen-open'),
-  watch: el('screen-watch'),
+  rescan: el('screen-rescan'),
   error: el('screen-error'),
 };
 
@@ -32,6 +22,7 @@ const state = {
   config: null,
   rarity: makeRarityLookup([]),
   ticket: '',
+  key: '',
   screen: 'main',
   spinning: false,
 };
@@ -51,7 +42,7 @@ function toast(message, isError = false) {
   node.classList.toggle('is-error', isError);
   node.classList.add('is-visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove('is-visible'), 3600);
+  toastTimer = setTimeout(() => node.classList.remove('is-visible'), 4200);
 }
 
 async function api(path, options = {}) {
@@ -80,6 +71,7 @@ function isScreenMode() {
 /* ----------------------------------------------------------------- result */
 
 function showResult(win, { celebrate = true } = {}) {
+  const settings = state.config?.settings || {};
   const color = state.rarity.color(win.prize.rarity);
   const card = el('result-card');
   card.style.setProperty('--win-color', color);
@@ -104,10 +96,10 @@ function showResult(win, { celebrate = true } = {}) {
   el('result-name').textContent = win.prize.name;
   el('result-subtitle').textContent = win.prize.subtitle || '';
   el('claim-code').textContent = win.claimCode;
-  const handout = state.config?.settings.caseMode === 'screen' && state.config?.settings.autoCollect;
+  const handout = isScreenMode() && settings.autoCollect;
   el('claim-note').textContent = handout
     ? 'Grab your prize from the counter — this code is your receipt.'
-    : state.config?.settings.claimNote || '';
+    : settings.claimNote || '';
 
   show('open');
   el('result').classList.remove('hidden');
@@ -124,41 +116,23 @@ function showError(message) {
   show('error');
 }
 
-/* ------------------------------------------------------------- open flows */
+/* -------------------------------------------------------------- the open */
 
-async function requestOpen() {
-  return api('/api/open', {
-    method: 'POST',
-    body: JSON.stringify({ ticket: state.ticket, screen: state.screen }),
-  });
-}
-
-function handleOpenError(error) {
-  state.spinning = false;
-  el('case-button').disabled = false;
-  const already = error.data && error.data.code === 'ticket_used';
-  if (already && error.data.win) {
-    el('reel').classList.add('hidden');
-    showResult(error.data.win, { celebrate: false });
-    toast('That ticket was already opened — here is your pull.');
-    return;
-  }
-  showError(error.message);
-}
-
-/** Phone mode: tap, spin here, reveal. */
-async function openOnPhone() {
+async function openCase() {
   if (state.spinning) return;
   state.spinning = true;
   el('case-button').disabled = true;
 
   try {
-    const data = await requestOpen();
-    localStorage.setItem(STORAGE_KEY, data.win.id);
+    const data = await api('/api/open', {
+      method: 'POST',
+      body: JSON.stringify({ ticket: state.ticket, screen: state.screen, key: state.key }),
+    });
 
     show('open');
     el('reel').classList.remove('hidden');
     el('result').classList.add('hidden');
+    el('open-hint').classList.toggle('hidden', !data.onScreen);
     // Let layout settle before animating, or the first frame jumps.
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await spinReel(el('reel'), el('reel-track'), data.reel, data.winnerIndex, state.rarity);
@@ -168,33 +142,24 @@ async function openOnPhone() {
   }
 }
 
-/** Screen mode: open immediately, point at the display, reveal later. */
-async function openOnScreen() {
-  if (state.spinning) return;
-  state.spinning = true;
-  show('watch');
+function handleOpenError(error) {
+  state.spinning = false;
+  el('case-button').disabled = false;
+  const data = error.data || {};
 
-  try {
-    const data = await requestOpen();
-    localStorage.setItem(STORAGE_KEY, data.win.id);
-
-    // Give the display time to play the reel before spoiling it on the phone.
-    const seconds = Math.ceil(WATCH_REVEAL_MS / 1000);
-    const counter = el('watch-count');
-    let left = seconds;
-    counter.textContent = left;
-    const timer = setInterval(() => {
-      left -= 1;
-      counter.textContent = Math.max(0, left);
-      if (left <= 0) clearInterval(timer);
-    }, 1000);
-
-    await new Promise((resolve) => setTimeout(resolve, WATCH_REVEAL_MS));
+  // Same scan, same phone: show what they already pulled.
+  if ((data.code === 'already' || data.code === 'ticket_used') && data.win) {
     el('reel').classList.add('hidden');
+    el('open-hint').classList.add('hidden');
     showResult(data.win, { celebrate: false });
-  } catch (error) {
-    handleOpenError(error);
+    toast('This is your pull from this scan. Scan the QR again for a new one.');
+    return;
   }
+  if (data.code === 'rescan' || data.code === 'already') {
+    show('rescan');
+    return;
+  }
+  showError(error.message);
 }
 
 /* --------------------------------------------------------------- startup */
@@ -227,21 +192,8 @@ function applyBranding(settings) {
 function readUrl() {
   const params = new URLSearchParams(location.search);
   state.ticket = normalizeTicket(params.get('c') || params.get('t') || params.get('ticket') || '');
+  state.key = params.get('k') || '';
   state.screen = params.get('screen') || 'main';
-}
-
-async function restoreLastWin() {
-  const id = localStorage.getItem(STORAGE_KEY);
-  if (!id) return false;
-  try {
-    const { win } = await api(`/api/win/${encodeURIComponent(id)}`);
-    el('reel').classList.add('hidden');
-    showResult(win, { celebrate: false });
-    return true;
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-    return false;
-  }
 }
 
 function routeToStart() {
@@ -255,7 +207,7 @@ function routeToStart() {
     return;
   }
   if (isScreenMode()) {
-    openOnScreen();
+    openCase();
     return;
   }
   show('ready');
@@ -273,15 +225,12 @@ async function boot() {
   applyBranding(state.config.settings);
   renderShowcase(state.config.prizes);
   readUrl();
-
-  // Without limits every scan is a fresh pull, so never replay an old one.
-  if (state.config.settings.limitOpens && (await restoreLastWin())) return;
   routeToStart();
 
   if (state.ticket) el('ticket-input').value = state.ticket;
 }
 
-el('case-button').addEventListener('click', openOnPhone);
+el('case-button').addEventListener('click', openCase);
 
 el('ticket-form').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -291,7 +240,7 @@ el('ticket-form').addEventListener('submit', (event) => {
     return;
   }
   state.ticket = value;
-  if (isScreenMode()) openOnScreen();
+  if (isScreenMode()) openCase();
   else show('ready');
 });
 
@@ -305,9 +254,5 @@ el('error-retry').addEventListener('click', () => {
   el('case-button').disabled = false;
   routeToStart();
 });
-
-// Unused import guard: buildReel is used by the display, kept here so the
-// shared module tree-shakes identically in both pages.
-void buildReel;
 
 boot();

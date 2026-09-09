@@ -25,9 +25,9 @@ functions/_lib/    auth, storage, roll logic
    the customers and click **Start display** (press `F` for fullscreen). It
    shows your branding, the prizes, and the QR code to scan. Flip the
    **Live** switch on in the admin panel.
-3. **Customer buys something and scans the QR.** Their phone says "look at
-   the screen"; on the display the reel spins and stops on their prize. A
-   few seconds later the same prize appears on their phone too.
+3. **Customer buys something and scans the QR.** The reel spins on their
+   phone and on the display at the same time, and both land on the same
+   prize.
 4. **Hand over the prize.** With *Hand out at the screen* on (the default)
    the pull is marked collected automatically and nobody types anything.
    Press **Space** on the display to move to the next customer early. A
@@ -48,10 +48,15 @@ it, and the reel plays in their hand. The **QR sign** tab prints a table sign
 for either mode — handy so several people can scan at once without crowding
 the screen.
 
-There are **no limits by default**: staff are at the table, so anyone can
-scan as often as they are told to. If you ever run it unattended, Settings →
-*Limit opens per phone* gives each phone N opens per hour (a cookie
-identifies the phone). The roll happens on the server, so the odds cannot be
+**One scan, one spin.** The QR on the display carries a signed key that
+changes every 20 seconds; each key is good for a single spin per phone.
+Refreshing the page just shows the pull that scan already produced, with a
+"scan again for a new pull" note, while scanning again (new key) always gives
+a fresh spin, so a second purchase is just a second scan. Several people
+scanning during the same 20 seconds each get their own spin. A printed sign
+cannot rotate, so a scan of it allows one spin per phone per 10 minutes.
+Beyond that there are no limits by default; if you ever run it unattended,
+Settings → *Limit opens per phone* gives each phone N opens per hour. The roll happens on the server, so the odds cannot be
 changed from the phone, and the reel is generated from the same prize pool
 with the winner placed at a fixed position. A claim code can only be marked
 collected once.
@@ -140,8 +145,8 @@ session cookie set by `POST /api/admin/login`.
 | Method | Path | What |
 | --- | --- | --- |
 | GET | `/api/case` | Branding, settings and the drawable prize list |
-| POST | `/api/open` | `{ ticket?, screen? }` → rolls, returns `win` (+ `reel`, `winnerIndex` in phone mode) |
-| GET | `/api/display?screen=` | Recent wins queued for that display (polled every 2 s) |
+| POST | `/api/open` | `{ key?, ticket?, screen? }` → rolls, returns `win`, `reel`, `winnerIndex` |
+| GET | `/api/display?screen=` | Queued wins plus the current `scanUrl` for the QR (polled every 2 s) |
 | GET | `/api/win/:idOrClaimCode` | Re-fetch a pull (used when the page reloads) |
 | GET | `/api/img/:id` | Prize image (immutable, cached) |
 | POST | `/api/admin/login` / `logout` | Session |

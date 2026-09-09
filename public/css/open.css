@@ -313,8 +313,13 @@
   50% { transform: translateY(-8px); }
 }
 
-.watch__timer { margin-top: 26px; font-size: 14px; }
-.watch__timer strong { color: var(--gold); font-variant-numeric: tabular-nums; }
+.open-hint {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
 
 /* ------------------------------------------------------------- ticket */
 
