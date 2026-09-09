@@ -29,20 +29,24 @@ import {
   listAll,
   oddsFor,
   publicPrize,
+  pushToScreen,
   putTicket,
+  readScreen,
   recordWin,
   rollPrize,
   savePrizes,
   saveSettings,
+  screenName,
   updateWin,
 } from '../_lib/store.js';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 // Ticketless mode identifies a phone by a long-lived cookie. Event venues share
-// one IP across every phone on the WiFi, so IP alone is only a loose backstop.
+// one IP across every phone on the WiFi, so the IP limit only counts *new*
+// devices (someone clearing cookies to re-roll), never normal opens.
 const DEVICE_COOKIE = 'hatamon_device';
-const IP_BACKSTOP_PER_HOUR = 60;
+const NEW_DEVICES_PER_IP_PER_HOUR = 30;
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -68,6 +72,7 @@ async function route(path, method, context, env, request) {
 
   if (path === 'case' && method === 'GET') return handleCase(env);
   if (path === 'open' && method === 'POST') return handleOpen(env, request);
+  if (path === 'display' && method === 'GET') return handleDisplay(env, request);
 
   if (path.startsWith('img/') && method === 'GET') {
     return handleImage(env, path.slice(4));
@@ -117,6 +122,7 @@ async function handleCase(env) {
       caseName: settings.caseName,
       tagline: settings.tagline,
       claimNote: settings.claimNote,
+      caseMode: settings.caseMode,
       requireTicket: settings.requireTicket,
       showOdds: settings.showOdds,
       live: settings.live,
@@ -173,15 +179,19 @@ async function handleOpen(env, request) {
   let setCookie = null;
   if (!ticket) {
     deviceId = readCookie(request, DEVICE_COOKIE);
-    if (!deviceId || !/^[a-z0-9]{16}$/.test(deviceId)) {
+    const isNewDevice = !deviceId || !/^[a-z0-9]{16}$/.test(deviceId);
+    if (isNewDevice) {
       deviceId = newId(16);
       setCookie = `${DEVICE_COOKIE}=${deviceId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`;
+      const ipOk = await checkRateLimit(env, `ip:${clientIp(request)}`, NEW_DEVICES_PER_IP_PER_HOUR);
+      if (!ipOk) {
+        throw new HttpError(429, 'Too many opens from this network right now. Come see us at the table!', {
+          code: 'rate_limited',
+        });
+      }
     }
-    const [deviceOk, ipOk] = await Promise.all([
-      checkRateLimit(env, `dev:${deviceId}`, settings.maxOpensPerHour),
-      checkRateLimit(env, `ip:${clientIp(request)}`, IP_BACKSTOP_PER_HOUR),
-    ]);
-    if (!deviceOk || !ipOk) {
+    const deviceOk = await checkRateLimit(env, `dev:${deviceId}`, settings.maxOpensPerHour);
+    if (!deviceOk) {
       throw new HttpError(429, 'This phone has already opened its case. Come see us at the table!', {
         code: 'rate_limited',
       });
@@ -203,11 +213,23 @@ async function handleOpen(env, request) {
 
   await consumeStock(env, winner.id);
 
-  const { reel, winnerIndex } = buildReel(prizes, winner);
+  const onScreen = settings.caseMode === 'screen';
+  if (onScreen) {
+    await pushToScreen(env, screenName(body.screen), { win: winView(win) });
+  }
+
+  const { reel, winnerIndex } = onScreen ? { reel: [], winnerIndex: 0 } : buildReel(prizes, winner);
   return json(
-    { ok: true, reel, winnerIndex, win: winView(win) },
+    { ok: true, onScreen, reel, winnerIndex, win: winView(win) },
     setCookie ? { headers: { 'set-cookie': setCookie } } : {},
   );
+}
+
+/** Polled by /display.html: the recent wins queued for that screen. */
+async function handleDisplay(env, request) {
+  const name = screenName(new URL(request.url).searchParams.get('screen'));
+  const entries = await readScreen(env, name);
+  return json({ ok: true, screen: name, entries });
 }
 
 async function handleImage(env, id) {
@@ -238,6 +260,7 @@ function winView(win) {
     prize: {
       id: win.prizeId,
       name: win.prizeName,
+      subtitle: win.prizeSubtitle || '',
       rarity: win.rarity,
       image: win.imageId ? `/api/img/${win.imageId}` : null,
     },
@@ -421,7 +444,7 @@ async function handleRedeem(env, request) {
 async function handlePurge(env, request) {
   const body = await readJson(request);
   const targets = {
-    wins: ['win:', 'claim:', 'winref:'],
+    wins: ['win:', 'claim:', 'screen:'],
     tickets: ['ticket:'],
   };
   const prefixes = targets[body.what];

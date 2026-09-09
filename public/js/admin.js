@@ -645,6 +645,7 @@ el('settings-form').addEventListener('submit', async (event) => {
     tagline: form.elements.tagline.value,
     claimNote: form.elements.claimNote.value,
     closedMessage: form.elements.closedMessage.value,
+    caseMode: form.elements.caseMode.value,
     requireTicket: form.elements.requireTicket.checked,
     showOdds: form.elements.showOdds.checked,
     maxOpensPerHour: Number(form.elements.maxOpensPerHour.value),

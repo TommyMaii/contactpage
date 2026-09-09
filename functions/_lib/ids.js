@@ -19,6 +19,14 @@ export function newId(length = 12) {
   return pick(ID_ALPHABET, length);
 }
 
+/**
+ * Win ids sort chronologically as strings (zero-padded ms timestamp + random
+ * tail), so one KV key doubles as the listing index.
+ */
+export function newWinId() {
+  return `${String(Date.now()).padStart(14, '0')}${pick(ID_ALPHABET, 6)}`;
+}
+
 /** Ticket code printed on a QR slip, e.g. "H7QF-3MTX". */
 export function newTicketCode() {
   return `${pick(HUMAN_ALPHABET, 4)}-${pick(HUMAN_ALPHABET, 4)}`;

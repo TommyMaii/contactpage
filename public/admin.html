@@ -33,6 +33,7 @@
         <input type="checkbox" id="live-toggle" />
         <span id="live-label">Live</span>
       </label>
+      <a class="btn btn--sm btn--primary" href="/display.html" target="_blank" rel="noopener">Open display ↗</a>
       <a class="btn btn--sm btn--ghost" href="/" target="_blank" rel="noopener">View case ↗</a>
       <button class="btn btn--sm btn--ghost" id="logout" type="button">Sign out</button>
     </header>
@@ -152,6 +153,7 @@
           <p class="field__label">Link in the QR</p>
           <p class="code" id="sign-url" style="word-break: break-all; margin-bottom: 14px"></p>
           <p class="muted" style="font-size: 13px">
+            The display page shows this same QR on screen, so a laptop facing the customer works without a printed sign.
             Each phone gets one open per hour by default (Settings → “Opens per phone per hour”).
             Turn the <strong>Live</strong> switch off when you step away from the table and the sign stops working.
           </p>
@@ -189,6 +191,26 @@
             <span class="field__label">Closed message</span>
             <input class="input" name="closedMessage" maxlength="200" />
           </label>
+
+          <div class="field field--wide">
+            <span class="field__label">Where the case opens</span>
+            <div class="choice-grid">
+              <label class="choice">
+                <input type="radio" name="caseMode" value="screen" />
+                <span class="choice__body">
+                  <strong>On the shop screen</strong>
+                  <span>Customers scan, the reel plays on <a href="/display.html" target="_blank" rel="noopener">/display.html</a> at your table, their phone shows the claim code afterwards.</span>
+                </span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="caseMode" value="phone" />
+                <span class="choice__body">
+                  <strong>On the customer's phone</strong>
+                  <span>Customers scan, tap the case, and the reel plays on their own phone.</span>
+                </span>
+              </label>
+            </div>
+          </div>
 
           <div class="field">
             <span class="field__label">Access</span>

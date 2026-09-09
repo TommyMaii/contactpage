@@ -1,17 +1,17 @@
 // Everything that touches KV lives here, plus the prize roll itself.
 
 import { HttpError } from './http.js';
-import { newId, newClaimCode, secureRandom } from './ids.js';
+import { newId, newWinId, newClaimCode, secureRandom } from './ids.js';
 
 export const KEYS = {
   settings: 'settings',
   prizes: 'prizes',
   image: (id) => `img:${id}`,
   ticket: (code) => `ticket:${code}`,
-  win: (createdAt, id) => `win:${String(createdAt).padStart(14, '0')}:${id}`,
+  win: (id) => `win:${id}`,
   claim: (claimCode) => `claim:${claimCode}`,
-  winRef: (id) => `winref:${id}`,
   rate: (subject, bucket) => `rate:${subject}:${bucket}`,
+  screen: (name) => `screen:${name}`,
 };
 
 export const RARITIES = [
@@ -29,6 +29,9 @@ export const DEFAULT_SETTINGS = {
   caseName: 'Event Case',
   tagline: 'Thanks for your purchase! Open your case and see what you pulled.',
   claimNote: 'Show this screen to a Hatamon staff member to collect your prize.',
+  // 'screen': the reel plays on /display.html at the table and the phone just
+  // says "watch the screen". 'phone': the reel plays on the customer's phone.
+  caseMode: 'screen',
   requireTicket: false,
   showOdds: false,
   maxOpensPerHour: 1,
@@ -63,6 +66,7 @@ export async function saveSettings(env, patch) {
     tagline: str(patch.tagline, current.tagline, 200),
     claimNote: str(patch.claimNote, current.claimNote, 200),
     closedMessage: str(patch.closedMessage, current.closedMessage, 200),
+    caseMode: patch.caseMode === 'phone' || patch.caseMode === 'screen' ? patch.caseMode : current.caseMode,
     requireTicket: bool(patch.requireTicket, current.requireTicket),
     showOdds: bool(patch.showOdds, current.showOdds),
     live: bool(patch.live, current.live),
@@ -181,11 +185,12 @@ export async function putTicket(env, ticket) {
 export async function recordWin(env, { prize, ticketCode, source }) {
   const createdAt = Date.now();
   const win = {
-    id: newId(),
+    id: newWinId(),
     claimCode: newClaimCode(),
     createdAt,
     prizeId: prize.id,
     prizeName: prize.name,
+    prizeSubtitle: prize.subtitle || '',
     rarity: prize.rarity,
     imageId: prize.imageId || '',
     ticketCode: ticketCode || null,
@@ -193,31 +198,55 @@ export async function recordWin(env, { prize, ticketCode, source }) {
     redeemed: false,
     redeemedAt: null,
   };
-  const key = KEYS.win(createdAt, win.id);
-  win.key = key;
   await Promise.all([
-    db(env).put(key, JSON.stringify(win)),
-    db(env).put(KEYS.claim(win.claimCode), key),
-    db(env).put(KEYS.winRef(win.id), key),
+    db(env).put(KEYS.win(win.id), JSON.stringify(win)),
+    db(env).put(KEYS.claim(win.claimCode), win.id),
   ]);
   return win;
 }
 
 export async function getWinById(env, id) {
-  const key = await db(env).get(KEYS.winRef(id));
-  if (!key) return null;
-  return db(env).get(key, 'json');
+  if (!/^[a-z0-9]{20}$/.test(id || '')) return null;
+  return db(env).get(KEYS.win(id), 'json');
 }
 
 export async function getWinByClaimCode(env, claimCode) {
-  const key = await db(env).get(KEYS.claim(claimCode));
-  if (!key) return null;
-  return db(env).get(key, 'json');
+  const id = await db(env).get(KEYS.claim(claimCode));
+  if (!id) return null;
+  return getWinById(env, id);
 }
 
 export async function updateWin(env, win) {
-  await db(env).put(win.key, JSON.stringify(win));
+  await db(env).put(KEYS.win(win.id), JSON.stringify(win));
   return win;
+}
+
+/* ------------------------------------------------------------- big screen */
+
+const SCREEN_QUEUE_MAX = 12;
+const SCREEN_ENTRY_TTL_MS = 10 * 60 * 1000;
+
+export function screenName(raw) {
+  const name = String(raw || 'main').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24);
+  return name || 'main';
+}
+
+/** Append a win to the screen's play queue (the display polls this key). */
+export async function pushToScreen(env, name, entry) {
+  const key = KEYS.screen(name);
+  const now = Date.now();
+  const current = (await db(env).get(key, 'json')) || [];
+  const fresh = current.filter((e) => now - e.ts < SCREEN_ENTRY_TTL_MS);
+  fresh.push({ ...entry, ts: now });
+  await db(env).put(key, JSON.stringify(fresh.slice(-SCREEN_QUEUE_MAX)), {
+    expirationTtl: 3600,
+  });
+}
+
+export async function readScreen(env, name) {
+  const now = Date.now();
+  const entries = (await db(env).get(KEYS.screen(name), 'json')) || [];
+  return entries.filter((e) => now - e.ts < SCREEN_ENTRY_TTL_MS);
 }
 
 /** List every key under a prefix, following KV's cursor. */

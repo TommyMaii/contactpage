@@ -223,6 +223,31 @@
   background: rgba(255, 107, 107, 0.05);
 }
 
+/* ----------------------------------------------------------- radio cards */
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  cursor: pointer;
+}
+
+.choice:has(input:checked) { border-color: var(--gold-dim); box-shadow: 0 0 0 3px rgba(245, 197, 66, 0.15); }
+.choice input { margin-top: 3px; accent-color: var(--gold); }
+.choice__body { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); }
+.choice__body strong { color: var(--text); font-size: 14px; }
+
 /* --------------------------------------------------------------- QR sign */
 
 .qr-preview {

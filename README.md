@@ -1,9 +1,10 @@
 # Hatamon Case
 
 A QR-code prize reveal for Hatamon card events. A customer buys something,
-scans the QR sign on the table, and opens an animated case that lands on one
-of the prizes you configured. Staff see a hidden panel where they upload
-prize pictures, set the odds, print the sign, and mark prizes as collected.
+scans the QR on the table, and an animated case opens on the shop's big
+screen (or on their phone), landing on one of the prizes you configured.
+Staff see a hidden panel where they upload prize pictures, set the odds,
+print the sign, and mark prizes as collected.
 
 Everything runs on **Cloudflare Pages** (static pages + Functions) with one
 **KV namespace** for storage. No build step, no framework, no database server.
@@ -19,23 +20,35 @@ functions/_lib/    auth, storage, roll logic
 ## How an event works
 
 1. **Before the event** — sign in at `/admin.html`, add prizes with pictures,
-   set weights (odds) and stock, then open the **QR sign** tab and hit
-   **Print sign**.
-2. **At the table** — put the sign out and flip the **Live** switch on.
-3. **Customer buys something and scans the sign.** Their phone opens the
-   case, they tap it, the reel spins and stops on their prize. They get a
-   six-character **claim code**.
-4. **They show you the screen**, you type the claim code into the **Pulls**
-   tab (or tap *Collected* next to it) and hand over the prize.
+   set weights (odds) and stock.
+2. **At the table** — open `/display.html` on a laptop, tablet or TV facing
+   the customers and click **Start display** (press `F` for fullscreen). It
+   shows your branding, the prizes, and the QR code to scan. Flip the
+   **Live** switch on in the admin panel.
+3. **Customer buys something and scans the QR.** Their phone says "look at
+   the screen"; on the display the reel spins and stops on their prize with a
+   big six-character **claim code**. A few seconds later the same prize and
+   code appear on their phone too.
+4. **They show you the code**, you type it into the **Pulls** tab (or tap
+   *Collected* next to it) and hand over the prize.
 5. **After** — export the CSV if you want a record, then *Delete all pulls*
    in Settings to reset for next time. Flip **Live** off whenever you leave
-   the table so the sign stops working.
+   the table so the QR stops working.
+
+Prefer the reel on the customer's own phone? Settings → **Where the case
+opens** → *On the customer's phone*. Then scanning shows the case, they tap
+it, and the reel plays in their hand. The **QR sign** tab prints a table sign
+for either mode.
 
 Each phone gets **one open per hour** by default (a cookie identifies the
 phone; change the number in Settings if people buy more than once). The roll
 happens on the server, so the odds cannot be changed from the phone, and the
-reel the customer sees is generated from the same prize pool with the winner
-placed at a fixed position. A claim code can only be marked collected once.
+reel is generated from the same prize pool with the winner placed at a fixed
+position. A claim code can only be marked collected once.
+
+If several people scan in a row, the display plays them one after another
+and shows "2 more waiting". A screen name in the URL (`/display.html?screen=b`
+together with a QR for `/?screen=b`) lets you run two tables from one deploy.
 
 ### Odds
 
@@ -105,7 +118,8 @@ session cookie set by `POST /api/admin/login`.
 | Method | Path | What |
 | --- | --- | --- |
 | GET | `/api/case` | Branding, settings and the drawable prize list |
-| POST | `/api/open` | `{ ticket }` → rolls, returns `reel`, `winnerIndex`, `win` |
+| POST | `/api/open` | `{ ticket?, screen? }` → rolls, returns `win` (+ `reel`, `winnerIndex` in phone mode) |
+| GET | `/api/display?screen=` | Recent wins queued for that display (polled every 2 s) |
 | GET | `/api/win/:idOrClaimCode` | Re-fetch a pull (used when the page reloads) |
 | GET | `/api/img/:id` | Prize image (immutable, cached) |
 | POST | `/api/admin/login` / `logout` | Session |
@@ -120,6 +134,17 @@ session cookie set by `POST /api/admin/login`.
 | POST | `/api/admin/purge` | `{ what: "wins" \| "tickets" }` |
 
 ## Things to know
+
+- **Free plan limits.** Cloudflare's free KV tier allows 1,000 writes and
+  100,000 reads per day. One open uses about 4–6 writes and the display
+  polls at 2 s (~43k reads over a full day), so the free plan comfortably
+  covers roughly 150 opens a day. Busier than that, or running several
+  events a month? Workers Paid is USD 5/month and lifts writes to a million.
+- **Display latency.** The display sees a scan instantly when the phone and
+  the display reach the same Cloudflare location, which is the normal case
+  at a venue. Rarely (phone on a different carrier route) it can take up to
+  a minute; the customer's phone still shows their prize and claim code
+  regardless.
 
 - **Stock is best-effort.** KV has no transactions; two people opening the
   last unit of a prize in the same second could both win it. At event scale

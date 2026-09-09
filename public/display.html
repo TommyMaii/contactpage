@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090c13" />
+  <meta name="robots" content="noindex" />
+  <title>Hatamon — Display</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/open.css" />
+  <link rel="stylesheet" href="/css/display.css" />
+</head>
+<body class="display">
+  <!-- Browsers block audio and fullscreen until a click; this gate collects it. -->
+  <div class="gate" id="gate">
+    <div class="gate__card panel">
+      <span class="brand"><span class="brand__mark"></span><span data-store-name>Hatamon</span></span>
+      <h1 class="headline" style="margin-top: 18px">Big-screen <em>display</em></h1>
+      <p class="sub">Put this on the laptop, tablet or TV at the table. When a customer scans the QR, the case opens here.</p>
+      <button class="btn btn--primary" id="gate-start" type="button" style="margin-top: 24px">Start display</button>
+      <p class="muted" style="margin-top: 14px; font-size: 13px">Press <kbd>F</kbd> for fullscreen · <kbd>M</kbd> to mute</p>
+    </div>
+  </div>
+
+  <header class="dtop">
+    <span class="brand"><span class="brand__mark"></span><span data-store-name>Hatamon</span></span>
+    <span class="dtop__case" data-case-name></span>
+    <span class="dtop__status" id="status"><span class="dot"></span> Live</span>
+  </header>
+
+  <main class="dstage">
+    <!-- Idle: QR + prizes -->
+    <section class="dscreen didle" id="d-idle">
+      <div class="didle__left">
+        <h1 class="dheadline">Scan to open <em>your case</em></h1>
+        <p class="dsub" id="idle-tagline"></p>
+        <div class="dqr" id="idle-qr"></div>
+        <p class="dqr__hint">One free pull with every purchase</p>
+      </div>
+      <div class="didle__right">
+        <p class="showcase__title">What's inside</p>
+        <div class="showcase__grid showcase__grid--display" id="idle-grid"></div>
+      </div>
+    </section>
+
+    <!-- Closed by staff -->
+    <section class="dscreen center hidden" id="d-closed">
+      <h1 class="dheadline">Case <em>closed</em></h1>
+      <p class="dsub" id="closed-message"></p>
+    </section>
+
+    <!-- Spinning -->
+    <section class="dscreen hidden" id="d-spin">
+      <h2 class="dspin__title">Opening…</h2>
+      <div class="reel reel--display" id="reel">
+        <div class="reel__marker"></div>
+        <div class="reel__track" id="reel-track"></div>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section class="dscreen hidden" id="d-result">
+      <div class="dresult">
+        <div class="dresult__card" id="result-card">
+          <span class="pill" id="result-rarity"></span>
+          <div class="dresult__art" id="result-art"></div>
+          <h2 class="dresult__name" id="result-name"></h2>
+          <p class="dresult__sub muted" id="result-subtitle"></p>
+        </div>
+        <div class="dresult__claim">
+          <p class="dresult__label">Claim code</p>
+          <p class="dresult__code" id="claim-code"></p>
+          <p class="dsub" id="claim-note"></p>
+          <p class="dresult__next muted">Also on your phone · next in <span id="result-count">12</span>s</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="dqueue hidden" id="queue"></div>
+
+  <canvas class="confetti hidden" id="confetti"></canvas>
+
+  <script src="/js/vendor/qrcode.js"></script>
+  <script src="/js/display.js" type="module"></script>
+</body>
+</html>

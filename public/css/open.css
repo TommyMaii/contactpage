@@ -297,6 +297,25 @@
   font-weight: 700;
 }
 
+/* -------------------------------------------------------------- watch */
+
+.watch { padding: 20px 0; }
+
+.watch__eyes {
+  font-size: 72px;
+  line-height: 1;
+  margin-bottom: 22px;
+  animation: peek 1.6s ease-in-out infinite;
+}
+
+@keyframes peek {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.watch__timer { margin-top: 26px; font-size: 14px; }
+.watch__timer strong { color: var(--gold); font-variant-numeric: tabular-nums; }
+
 /* ------------------------------------------------------------- ticket */
 
 .ticket-form { max-width: 330px; margin: 26px auto 0; }
